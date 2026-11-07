@@ -1,0 +1,5 @@
+// import {
+//   "hnlyxiaobing/moon_android" @lib,
+// }
+
+pkgtype(kind: "executable")
