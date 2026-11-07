@@ -2,7 +2,7 @@
 
 **MoonBit → Android 打包链的「计划与配置」契约 —— 构建计划、工具链版本锁、CI 门禁序列与产物校验规格。**
 
-> 状态：**Round-1 架构与声明可评审**。已写入 12 个值类型、`BuildPlanner` trait、`MoonAndroidError` 与 4 个 `declare` 函数，`moon check` 0 error（4 条预期 `0068` 告警）。**无脚本执行、无签名、无 adb、无 APK 读写**。
+> 状态：**实现完成，API 冻结前对账（R2 准备轮）**。12 个值类型、`BuildPlanner` trait、`MoonAndroidError` 与 4 个 API（`plan_build` / `render_script` / `verify_artifact` / `ci_gate_plan`）全部为真实实现（0 条 `0068`），四道门禁 `moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check` 全绿（39 tests；`pkg.generated.mbti` 与源码对账一致，冻结后签名变更即破坏性变更）。**无脚本执行、无签名、无 adb、无 APK 读写**。
 > `preferred_target = "wasm"`（骨架原值，未改动）；全后端、桌面可测。
 > **与原 README / 报告定位差异**：骨架把本项目定为 **P0「先解决能出包」、M0 起点**；本轮按 ADR-0005 把「一次性脚本泛化为可配置模板」后移到 **R4 / W3**，先用 MVL-D 一次性脚本验证通路。原因与影响见下文「排序修正」。
 
@@ -38,7 +38,7 @@
 ## 依赖
 
 - **本轮零依赖**：无 `moon add`、未改 `moon.pkg`、无 FFI、无外部句柄。
-- 后续轮（脚本实现，属 R2/R4）：Android SDK build-tools（aapt2 / d8 / zipalign / apksigner）、NDK、JDK、adb。**SDK/NDK 二进制不可再分发**（Android SDK License 3.4），本库只分发计划与配置文本。
+- 后续轮（脚本**执行**，属组合根 / R4）：Android SDK build-tools（aapt2 / d8 / zipalign / apksigner）、NDK、JDK、adb——本库只输出命令模板文本，不执行。**SDK/NDK 二进制不可再分发**（Android SDK License 3.4），本库只分发计划与配置文本。
 - `keystore_ref : String` 只存**引用**，禁止内嵌密钥材料（`MoonAndroidError::KeyMaterialEmbedded` 是可观察的拒绝信号）。
 
 ## 平台与许可风险
@@ -48,25 +48,25 @@
 | 工具链无 Android 目标 | 必须走「C stub + 宿主 NDK/CMake」；`foreign_library` 不能导出可链接 `.so/.dll`（`[事实]`） |
 | 版本未锁 | `ToolchainVersions` 任一字段为空视为未锁定，CI 必须拒绝（`ToolchainNotLocked`）；本轮 pin `moon 0.1.20261102` / `moonc v0.10.19+bee578715`（ADR-0010） |
 | 密钥 | 签名密钥不入库；`KeyMaterialEmbedded` 显式拒绝 |
-| 门禁豁免 | `Gate::CheckDenyWarn` 已列入建议序列，但**本轮按 ADR-0007 豁免**（65 条 `0068` 会升级为 error），R4 实现补齐后再打开 |
-| 主机差异 | Windows JDK 探测、路径空格、32/64 位双 ABI so 管理属 `TODO(实现轮)` |
+| 门禁 | `Gate::CheckDenyWarn` 已列入建议序列；R1 期曾按 ADR-0007 豁免（`0068` 会升级为 error），**R2 准备轮起实现完成、`0068` 归零，四道门禁统一含 `moon check --deny-warn`（11/11 拒警告通过）** |
+| 主机差异 | Windows JDK 探测、32/64 位双 ABI so 管理属组合根 / 后续轮（本库不探测 JDK，`ToolchainNotLocked` 只校验锁定值） |
 | 许可 | SDK/NDK 构件不可再分发；`create-...-app` legacy 模板只作参照 |
 
 ## 测试与验收
 
 - **纯测（桌面 CI 可跑）**：步骤顺序断言（zipalign 早于 apksigner）；版本锁缺失 → `ToolchainNotLocked`；包名非法 → `InvalidPackage`；密钥内嵌 → `KeyMaterialEmbedded`；签名方案冲突 → `SigningSchemeConflict`；`render_script` 确定性双次比对；`verify_artifact` 元数据不符 → `ArtifactMismatch`。
-- **验收标准（后续轮）**：从 `moon build` 到目标设备（红米电视 Android 9 / armeabi-v7a / 2GB）应用启动一条命令；CI 门禁全绿。
-- **本轮阻塞**：无链接期阻塞；`moon test` 目前无实际断言（`docs/moon-check-report.md` §4）。MVL-D 依赖 Q1 资产定位与 E3 实验结论。
+- **验收标准**：从 `moon build` 到目标设备（红米电视 Android 9 / armeabi-v7a / 2GB）应用启动一条命令（依赖 E3 + Q1，未复现）；CI 四道门禁全绿（✅ R2 准备轮实跑：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check`，39 tests）。
+- **门禁实跑（R2 准备轮，2026-11-07）**：`moon clean` → `moon check --deny-warn` → `moon build` → `moon test`（**39 tests** 全过）→ `moon fmt --check`，全部 exit 0；无链接期阻塞（无 FFI）。MVL-D 仍依赖 Q1 资产定位与 E3 实验结论。
 
 ## 当前状态 / 本轮产物
 
 | 项 | 状态 |
 |---|---|
-| `moon_android.mbt`：值类型 ×12、`BuildPlanner` trait、`MoonAndroidError`（9 构造）、`declare` API ×4 | ✅ |
-| `pkg.generated.mbti` API 快照 | ✅ |
-| 命令模板 / 脚本执行 / 签名 / adb / 双 ABI 模板泛化 | ❌ 后续轮（R2 计划部分、R4 模板泛化） |
-| `moon check` | ✅ 0 error（4 × `0068`，预期） |
+| `moon_android.mbt`：值类型 ×12、`BuildPlanner` trait、`MoonAndroidError`（9 构造）、API ×4（真实实现） | ✅ |
+| `pkg.generated.mbti` API 快照（与源码对账一致） | ✅ |
+| 命令模板（`render_script` 产出可审阅文本）/ 脚本执行 / 签名 / adb / 双 ABI 模板泛化 | 命令模板 ✅；执行、签名、adb、模板泛化 ❌ 非目标或后续轮（R4） |
+| 四道门禁：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check` | ✅ 全绿（39 tests） |
 
 ## 文档索引
 
-`DESIGN.md` · `API.md` · `../docs/architecture.md` §2 / §6 L4 / §7 / §8 · `../docs/adr/ADR-0005`（排序 O6）、`ADR-0007`（门禁豁免）、`ADR-0010`（零依赖与版本锁） · `../docs/roadmap-v2.md` R1/R2/R4 · `../docs/open-questions.md` E3 / Q1 / 决策点 5、7
+`DESIGN.md` · `API.md` · `../docs/architecture.md` §2 / §6 L4 / §7 / §8 · `../docs/adr/ADR-0005`（排序 O6）、`ADR-0007`（R1 期门禁豁免，R2 准备轮起恢复 `--deny-warn`）、`ADR-0010`（零依赖与版本锁） · `../docs/roadmap-v2.md` R1/R2/R4 · `../docs/open-questions.md` E3 / Q1 / 决策点 5、7

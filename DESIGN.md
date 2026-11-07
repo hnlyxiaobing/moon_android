@@ -1,6 +1,6 @@
 # moon_android · 设计契约（DESIGN.md）
 
-> Round-1 / 2026-11-06 ｜ 状态：架构与声明可评审，无脚本执行、无打包逻辑
+> Round-1 起草 / 2026-11-06 ｜ **API 冻结前对账（R2 准备轮）/ 2026-11-07** ｜ 状态：**已实现**（计划 / 渲染 / 校验 / 门禁序列），无脚本执行、无打包逻辑（冻结后签名变更即破坏性变更）
 
 ## 1. 分层位置与职责
 
@@ -41,13 +41,13 @@ BuildConfig + Abis                                  ▼
 | `MoonAndroidError` | `pub suberror`，9 个可判定错误构造 |
 | `BuildPlanner` trait | `fn plan(Self) -> BuildPlan raise MoonAndroidError`；确定性、可复现、无副作用 |
 
-> 设计取舍：`BuildPlan` 是「步骤枚举 + 输入/输出名」而非命令字符串数组，本轮**不泄漏** aapt2/d8/zipalign 的具体参数与主机路径；命令模板属 `TODO(实现轮)`。这样换 build-tools 版本只改配置值，不改上层类型（`architecture.md` §7）。
+> 设计取舍：`BuildPlan` 是「步骤枚举 + 输入/输出名」而非命令字符串数组，本库**不泄漏**主机路径与环境探测结果；aapt2/d8/zipalign/apksigner 的**命令行模板由 `render_script` 产出可审阅文本**（仍不执行），参数细节不出现在上层类型里。这样换 build-tools 版本只改配置值，不改上层类型（`architecture.md` §7）。
 
 ## 4. 错误模型
 
 `MoonAndroidError`：`InvalidPackage(String)`、`UnsupportedAbi(String)`、`MissingTool(String)`、`ToolchainNotLocked(String)`、`InvalidStepOrder(String, String)`、`KeyMaterialEmbedded`、`SigningSchemeConflict(String)`、`ArtifactMismatch(String)`、`MissingGate(Gate)`。
 
-全部失败型 API 统一 `-> T raise MoonAndroidError`。其中 `KeyMaterialEmbedded` 与 `ToolchainNotLocked` 是**安全/合规的可观察信号**，实现轮必须主动返回而不是静默降级。`Gate` 已 `#derive(Debug)` + `pub extend Gate with Debug::{to_repr}`，以便放进错误构造时不产生 `E4018`。
+全部失败型 API 统一 `-> T raise MoonAndroidError`。其中 `KeyMaterialEmbedded` 与 `ToolchainNotLocked` 是**安全/合规的可观察信号**，`plan_build` 与 `render_script` 均主动返回而不是静默降级。`Gate` 已 `#derive(Debug)` + `pub extend Gate with Debug::{to_repr}`，以便放进错误构造时不产生 `E4018`。
 
 ## 5. 资源生命周期
 
@@ -57,7 +57,7 @@ BuildConfig + Abis                                  ▼
 
 ## 6. 线程 / 并发边界
 
-纯函数、确定性、无可变全局状态、无环境读取；可并发调用。实现轮不得引入「探测本机 JDK / SDK 路径」这类隐式 I/O，否则确定性与 CI 快照测试都会失效。
+纯函数、确定性、无可变全局状态、无环境读取；可并发调用。本库**不引入**「探测本机 JDK / SDK 路径」这类隐式 I/O，否则确定性与 CI 快照测试都会失效。
 
 ## 7. 平台约束与外部依赖
 
@@ -76,7 +76,7 @@ BuildConfig + Abis                                  ▼
 | `BuildPlan + Artifact` | `Bool`（元数据是否一致） | `ArtifactMismatch` |
 | 无 | `Array[Gate]`（建议门禁序列） | 无（纯常量） |
 
-`declare` 只用于 4 个函数签名；具体 `enum` / `struct` / `trait` / `suberror` 用真实类型定义（ADR-0001）。**无 `#external`、无 `extern "C"`、无回调、无所有权注解**。
+4 个函数均为 `pub fn` **真实实现**（无 `declare` 占位、无 `0068` 告警）；具体 `enum` / `struct` / `trait` / `suberror` 用真实类型定义（ADR-0001）。**无 `#external`、无 `extern "C"`、无回调、无所有权注解**。
 
 ## 9. 可替换性与实现细节不泄漏
 
@@ -88,23 +88,23 @@ BuildConfig + Abis                                  ▼
 |---|---|
 | 纯测 | 步骤顺序断言（`Zipalign` 早于 `Apksigner`）；`plan_build` 输出确定性双次比对；`abis` 为空时回落到 `config.abis` |
 | 负例 | 版本锁缺失、非法包名、密钥内嵌、签名方案冲突、缺工具、产物元数据不符、缺门禁 |
-| 快照 | `render_script` golden；`ci_gate_plan()` 序列快照（含 `CheckDenyWarn`，但本轮豁免执行） |
-| 门禁 | `moon fmt --check` / `moon check`（**普通**，不加 `--deny-warn`）/ `moon test --enable-coverage` / `moon info` / 版本锁 |
+| 快照 | `render_script` golden；`ci_gate_plan()` 序列快照（含 `CheckDenyWarn`） |
+| 门禁 | 四道门禁：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check`（R2 准备轮实跑全绿，39 tests；11/11 模块拒警告通过） |
 | 设备（后续轮） | MVL-D 一次性脚本 → 目标设备启动；R4 才做模板泛化与双 ABI |
 
-> **本轮门禁说明**：65 条 `[0068] declaration_unimplemented` 是 `declare` 的设计性告警；`moon check --deny-warn` 本轮必然失败，按 ADR-0007 用普通 `moon check` + 「0068 计数单调不增」软检查，R4 实现补齐后再开全绿门禁。
+> **门禁口径（R2 准备轮更新）**：R1 期因 65 条 `[0068] declaration_unimplemented` 曾按 ADR-0007 用普通 `moon check` 豁免 `--deny-warn`；实现完成后 `0068` 归零，**本轮起统一执行 `moon check --deny-warn`**，该豁免不再适用。
 
 ## 11. 验收标准（后续轮）
 
-1. 纯测与快照全绿、计划确定性可证；2. MVL-D：从 `moon build` 到目标设备应用启动一条命令（依赖 E3 + Q1）；3. CI 门禁全绿（R4 含 `--deny-warn`）；4. R4 模板泛化后外部开发者按文档可跑通。
+1. 纯测与快照全绿、计划确定性可证；2. MVL-D：从 `moon build` 到目标设备应用启动一条命令（依赖 E3 + Q1）；3. CI 四道门禁全绿（✅ R2 准备轮已含 `moon check --deny-warn`）；4. R4 模板泛化后外部开发者按文档可跑通。
 
 ## 12. 未解决问题 / 待验证假设
 
-E3（P0）Android native 产物链路 · Q1（未解决）`mvp/` 与设备资产缺失 · Q7 legacy 模板迁移可编译性（仅参照）· aapt2/d8 命令模板、双 ABI so 管理、Windows JDK 探测均为 `TODO(实现轮)` · 评审决策点 5（本轮豁免 `--deny-warn`）、7（先一次性脚本、模板后移）。
+E3（P0）Android native 产物链路 · Q1（未解决）`mvp/` 与设备资产缺失 · Q7 legacy 模板迁移可编译性（仅参照）· aapt2/d8/zipalign/apksigner 命令模板已由 `render_script` 产出（可审阅、不执行），双 ABI so 管理与 Windows JDK 探测仍属组合根 / 后续轮 · 评审决策点 5（R1 期豁免 `--deny-warn`，R2 准备轮已恢复执行）、7（先一次性脚本、模板后移）。
 
-## 13. 当前状态与 TODO
+## 13. 当前状态
 
-`moon_android.mbt` 已写入 12 个值类型、`BuildPlanner` trait、`MoonAndroidError` 与 4 个 `declare` 函数，公开 API 有 `///` 文档注释与 `TODO(实现轮)`。**未实现任何计划生成、脚本渲染、产物校验或命令执行**。
+`moon_android.mbt` 的 12 个值类型、`BuildPlanner` trait、`MoonAndroidError` 与 4 个 API（`plan_build` / `render_script` / `verify_artifact` / `ci_gate_plan`）均为**真实实现**，公开 API 带 `///` 文档注释；`pkg.generated.mbti` 快照与源码一致。**命令执行、签名、adb、APK 读写仍为非目标**（无脚本执行）。四道门禁全绿（39 tests，R2 准备轮实跑）。
 
 ## References
 
