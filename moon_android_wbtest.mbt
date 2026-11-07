@@ -6,8 +6,8 @@
 /// 全部必锁版本齐备的工具链样例（与黑盒测试同规格）。
 fn locked_toolchain() -> ToolchainVersions {
   {
-    moon_cli: "moon 0.1.20261102",
-    moonc: "v0.10.19+bee578715",
+    moon_cli: "moon 0.1.20261104",
+    moonc: "v0.10.20+65efd5b93",
     core: "0.1.0",
     ndk: "r27",
     build_tools: "34.0.0",

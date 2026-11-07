@@ -41,7 +41,7 @@
 ## 安全与门禁提示
 
 - `keystore_ref` 只存引用；`KeyMaterialEmbedded` 是显式拒绝信号，`plan_build` 与 `render_script` 均会主动返回，**不静默接受内嵌密钥**。
-- `ToolchainNotLocked`：任一版本字段为空即拒绝；测试夹具与快照锁定 `moon 0.1.20261102` / `moonc v0.10.19+bee578715`（ADR-0010）。
+- `ToolchainNotLocked`：任一版本字段为空即拒绝；测试夹具与快照锁定 `moon 0.1.20261104` / `moonc v0.10.20+65efd5b93`（ADR-0010）。
 - `Gate::CheckDenyWarn` 在建议序列中；**R2 准备轮起四道门禁含 `moon check --deny-warn`，11/11 模块拒警告通过（0 条 `0068`）**，ADR-0007 的 R1 期豁免已随实现完成而失效。
 
 ## Wire / 跨模块提示

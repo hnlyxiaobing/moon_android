@@ -6,8 +6,8 @@
 /// 全部必锁版本齐备的工具链样例（版本 pin 参照 ADR-0010）。
 fn locked_toolchain() -> @moon_android.ToolchainVersions {
   {
-    moon_cli: "moon 0.1.20261102",
-    moonc: "v0.10.19+bee578715",
+    moon_cli: "moon 0.1.20261104",
+    moonc: "v0.10.20+65efd5b93",
     core: "0.1.0",
     ndk: "r27",
     build_tools: "34.0.0",
@@ -418,8 +418,8 @@ test "render_script golden：确定性脚本文本快照" {
       #|# abis: arm64-v8a, armeabi-v7a
       #|# signing_schemes: V2, V3
       #|# keystore_ref: @keys/release.jks
-      #|# toolchain.moon_cli: moon 0.1.20261102
-      #|# toolchain.moonc: v0.10.19+bee578715
+      #|# toolchain.moon_cli: moon 0.1.20261104
+      #|# toolchain.moonc: v0.10.20+65efd5b93
       #|# toolchain.core: 0.1.0
       #|# toolchain.ndk: r27
       #|# toolchain.build_tools: 34.0.0
@@ -498,7 +498,7 @@ test "render_script 内容含步骤标记、工具版本且不泄漏密钥" {
   assert_true(text.contains("# [7/10] Zipalign"))
   assert_true(text.contains("# [8/10] Apksigner"))
   assert_true(text.contains("# [10/10] AdbInstall"))
-  assert_true(text.contains("toolchain.moon_cli: moon 0.1.20261102"))
+  assert_true(text.contains("toolchain.moon_cli: moon 0.1.20261104"))
   assert_true(text.contains("toolchain.build_tools: 34.0.0"))
   assert_true(text.contains("--min-api 24"))
   assert_true(text.contains("--v2-signing-enabled true"))

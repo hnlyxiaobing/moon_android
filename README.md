@@ -46,7 +46,7 @@
 | 风险 | 说明 |
 |---|---|
 | 工具链无 Android 目标 | 必须走「C stub + 宿主 NDK/CMake」；`foreign_library` 不能导出可链接 `.so/.dll`（`[事实]`） |
-| 版本未锁 | `ToolchainVersions` 任一字段为空视为未锁定，CI 必须拒绝（`ToolchainNotLocked`）；本轮 pin `moon 0.1.20261102` / `moonc v0.10.19+bee578715`（ADR-0010） |
+| 版本未锁 | `ToolchainVersions` 任一字段为空视为未锁定，CI 必须拒绝（`ToolchainNotLocked`）；本轮 pin `moon 0.1.20261104` / `moonc v0.10.20+65efd5b93`（ADR-0010） |
 | 密钥 | 签名密钥不入库；`KeyMaterialEmbedded` 显式拒绝 |
 | 门禁 | `Gate::CheckDenyWarn` 已列入建议序列；R1 期曾按 ADR-0007 豁免（`0068` 会升级为 error），**R2 准备轮起实现完成、`0068` 归零，四道门禁统一含 `moon check --deny-warn`（11/11 拒警告通过）** |
 | 主机差异 | Windows JDK 探测、32/64 位双 ABI so 管理属组合根 / 后续轮（本库不探测 JDK，`ToolchainNotLocked` 只校验锁定值） |
