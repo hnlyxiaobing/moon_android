@@ -1,0 +1,132 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "hnlyxiaobing/moon_android"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn ci_gate_plan() -> Array[Gate]
+
+pub fn plan_build(BuildConfig, Array[Abi]) -> BuildPlan raise MoonAndroidError
+
+pub fn render_script(BuildPlan) -> String raise MoonAndroidError
+
+pub fn verify_artifact(BuildPlan, Artifact) -> Bool raise MoonAndroidError
+
+// Errors
+#derive(@debug.Debug)
+pub suberror MoonAndroidError {
+  InvalidPackage(String)
+  UnsupportedAbi(String)
+  MissingTool(String)
+  ToolchainNotLocked(String)
+  InvalidStepOrder(String, String)
+  KeyMaterialEmbedded
+  SigningSchemeConflict(String)
+  ArtifactMismatch(String)
+  MissingGate(Gate)
+}
+pub fn MoonAndroidError::to_repr(Self) -> @debug.Repr
+
+// Types and methods
+pub(all) enum Abi {
+  ArmeabiV7a
+  Arm64V8a
+  X86
+  X86_64
+}
+
+pub(all) enum ActivityKind {
+  WebView
+  GlesSurface
+  NativeOnly
+}
+
+pub(all) struct Artifact {
+  path : String
+  size_bytes : UInt64
+  sha256 : String
+  abis : Array[Abi]
+  signatures : Array[SigningScheme]
+}
+
+pub(all) struct BuildConfig {
+  package_id : PackageId
+  activity : ActivityKind
+  entry_url : String?
+  abis : Array[Abi]
+  min_sdk : Int32
+  target_sdk : Int32
+  signing_schemes : Array[SigningScheme]
+  keystore_ref : String
+  profile : BuildProfile
+  toolchain : ToolchainVersions
+  extra_native_libs : Array[String]
+}
+
+pub(all) struct BuildPlan {
+  steps : Array[BuildStep]
+  inputs : Array[String]
+  outputs : Array[String]
+  config : BuildConfig
+}
+
+pub(all) enum BuildProfile {
+  Debug
+  Release
+}
+
+pub(all) enum BuildStep {
+  CrossCompile
+  Aapt2Compile
+  Aapt2Link
+  Javac
+  D8
+  Assemble
+  Zipalign
+  Apksigner
+  Verify
+  AdbInstall
+}
+
+#derive(@debug.Debug)
+pub(all) enum Gate {
+  FmtCheck
+  Check
+  CheckDenyWarn
+  TestCoverage
+  Bench
+  InfoSnapshot
+  VersionLock
+}
+pub fn Gate::to_repr(Self) -> @debug.Repr
+
+pub(all) struct PackageId {
+  name : String
+}
+
+pub(all) enum SigningScheme {
+  V1
+  V2
+  V3
+  V31
+}
+
+pub(all) struct ToolchainVersions {
+  moon_cli : String
+  moonc : String
+  core : String
+  ndk : String
+  build_tools : String
+  platform : String
+  jdk : String
+  cmake : String?
+}
+
+// Type aliases
+
+// Traits
+pub trait BuildPlanner {
+  fn plan(Self) -> BuildPlan raise MoonAndroidError
+}
