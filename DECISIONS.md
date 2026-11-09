@@ -6,7 +6,7 @@
 
 **背景**：`moon build --target` 只有 wasm / wasm-gc / js / native / llvm / all，**没有 android 目标**；官方「一门语言、多后端」未把 Android 集成列入目标；native 后端的 `foreign_library` 不能导出可链接的 `.so/.dll`。社区现状只有 JNI 桥接件与一个 legacy 模板，没有「一条命令出 APK」的现成方案。可行通路是「C stub + 宿主 NDK/CMake + aapt2 / d8 / zipalign / apksigner」的外围工具链。
 
-**决策**：`moon_android` 只做 APK 打包链的「计划与配置」契约——由 `BuildConfig` 生成有序 `BuildPlan`（含步骤顺序校验）、渲染可审阅的脚本文本、校验产物元数据（size / sha256 / ABI / 签名方案）、给出建议的 CI 门禁序列。**不执行任何外部命令、不签名、不调 adb、不读写 APK、不实现 Gradle / IDE 集成、不管理密钥材料、不探测 JDK、不下载 SDK。**
+**决策**：`moon_android` 只做 APK 打包链的「计划与配置」契约——由 `BuildConfig` 生成有序 `BuildPlan`（含步骤顺序校验）、渲染可审阅的脚本文本、校验产物元数据（size / sha256 / ABI / 签名方案）、给出建议的 CI 门禁序列；R4 增补**模板生成树**、**双 ABI `.so` 清单**与 **JDK 纯评估器**。**不执行任何外部命令、不签名、不调 adb、不读写 APK、不实现 Gradle / IDE 集成、不管理密钥材料、不读环境变量或注册表（JDK 采集器属组合根）、不下载 SDK。**
 
 **理由**：
 
@@ -17,7 +17,9 @@
 
 **后果**：本库为纯 MoonBit 值类型 + 纯函数（无句柄、无 I/O、无 FFI、无外部句柄），全后端、桌面可测；命令执行、签名、adb、APK 读写留给未来的组合根 / 脚本执行层。计划与配置可以先行验证，不受设备与 SDK 到位时间影响。
 
-## 决策 2 · 模板泛化后移：先用一次性脚本验证通路，再抽象成可配置模板
+**R4 补记（2026-11-09，只补事实、不改结论）**：模板泛化、双 ABI 清单与 JDK **纯评估器**已落地；它们仍全部是纯值/纯函数，未引入进程、文件、环境或注册表访问。JDK 探测的边界按「采集器在组合根 / 评估器在库内」执行（决策 7），因此「本库不探测 JDK」的原意（不做 I/O 探测）不变。
+
+## 决策 2 · 模板泛化先验证再抽象（R4 已落地纯值模板；设备通路仍待实测）
 
 **背景**：最初的骨架定位是「先解决能出包」——首个交付物即参数化脚本模板（`moon android build --abi …` 一类）+ WebView/GLES 双壳 Activity + 双 ABI so 管理，并把 NDK 交叉编译当作硬前置。
 
@@ -28,6 +30,13 @@
 **被替代方案**：直接做参数化模板 + WebView/GLES 双壳 Activity + 双 ABI so 管理。风险：若 native 产物链路未跑通，模板全部作废。
 
 **后果**：FFI 相关工作可与打包链并行推进，不再被打包链阻塞；上板时仍**必须**补齐 `moon_abi` 配置，不能省略；一次性脚本必须明确标注为临时验证物。若后续证明通路由一次性脚本更合适，可直接替换 `render_script` 输出的消费方式，不改上层调用（`BuildPlan` 不含可执行动作，天然可替换）。
+
+### R4 修订补记（2026-11-09）：模板泛化已落地，但「先验证再抽象」原则不变
+
+- **事实**：R4 已实现 `plan_template`（`TemplateParams` → `GeneratedTree`）与 `render_template_script`（四阶段脚本），把参数化（包名/应用名/ABI/模块依赖/资产注入）固化为可测试接口；映射见 `TEMPLATE.md`。
+- **不推翻**：ADR-0005 O6 的排序（先一次性脚本证明 A4、再泛化）与决策 2 的「先验证再抽象」**原则不变**。本轮泛化的是**已被计划层验证的纯值接口**（10 步顺序、版本锁、签名约束、路径规则），**不是**设备端通路结论：E3（NDK clang + CMake 产出可加载 `.so`）与 Q1（一条命令到设备启动）仍未实测，`[仍需实测]`。
+- **风险留痕**：若设备端通路最终证明模板形状不适用，`GeneratedTree`/脚本渲染是纯值可替换层，改动局限在 `template.mbt` 与文档，不触碰已冻结的 `BuildPlan` / `render_script` 签名。
+- **执行链**：本机环境（JAVA_HOME 失效、build-tools/platform/JDK 与锁不符、NDK/CMake 缺失）导致按锁定版本不可执行，详见 `EXECUTION-CHAIN.md` §3；该结论**不**被模板泛化掩盖。
 
 ## 决策 3 · 跨模块只以文本片段协作，用名义类型隔离消解潜在循环依赖
 
@@ -75,6 +84,26 @@
 
 **后果**：仓库无依赖叠加风险，评审范围收敛到本仓库内的文档与声明；后续若引入解析类依赖（如 ZIP 解压），按五门槛审计留痕后再引入，移除成本被限定在单个模块内。
 
+## 决策 7 · R4 三项边界：模板纯值、双 ABI fail-closed、JDK 采集/评估分离
+
+**背景**：R4 要落地模板泛化（ADR-0005 O6）、双 ABI `.so` 管理与 Windows JDK 探测。三者都天然接近「执行 / 文件 / 环境」；若处理不当会把 I/O、工具二进制或平台细节带进本库，破坏零依赖、全后端可测与 API 快照确定性。
+
+**决策**：
+
+1. **模板只产出纯值 + 文本**：`plan_template` 返回 `GeneratedTree`（`GeneratedFile.path/content` 等纯值），`render_template_script` 只渲染四阶段脚本文本；不建目录、不写文件、不复制资产、不执行 `sha256sum`。资产与 `.so` 内容**不入库、不进库**，只登记路径 + SHA-256。
+2. **双 ABI fail-closed**：`NativeLib.sha256 = None` 是「未登记」而非通过；`render_native_manifest` 拒绝未登记清单；`validate_native_manifest(libs, dual_abi_set())` 缺任一 ABI 即 `MissingAbi`；目录与 ABI 不一致、重复 ABI、非法 soname 均拒绝。ABI 集顺序按输入保留，不隐式重排。
+3. **JDK 采集/评估分离**：库内 `probe_jdk` 只吃组合根给的 `JdkProbeEnv` 快照（`JAVA_HOME` / 注册表项 / 常见路径 / PATH / 已验证目录 / 要求主版本），做排序、去重、存在性、版本匹配；I/O 采集属于组合根。候选路径非法只记诊断并跳过，`required_major` 非法才 `InvalidJdkProbe`。
+
+**理由**：
+
+- 纯值边界保证 `moon test` 可在 wasm 后端、无 SDK/JDK 的 CI 上全绿，API 快照不引入平台差异；执行链风险可以用**受控输入**单元测试覆盖（本机实测的失效 `JAVA_HOME`、JDK 21/1.8 并存、注册表键位都能构造为 `JdkProbeEnv`）。
+- fail-closed 避免「未登记 = 通过」的假通过：`.so` 哈希缺失、ABI 缺失必须在清单/校验阶段被拒绝，而不是留到设备安装时失败。
+- 采集/评估分离让 Windows 专有 I/O（注册表、引号、盘符）留在组合根，库保持跨后端；同时给组合根明确的契约与诊断。
+
+**后果**：R4 新增 13 个公开类型、10 个公开函数、5 个错误构造，全部为加法性（既有签名冻结）；执行链的宿主差异被隔离在组合根，库侧风险登记于 `EXECUTION-CHAIN.md`。若将来要支持非 Windows 主机的注册表等价物（Linux alternatives / macOS `/usr/libexec/java_home`），只需扩展采集器，评估器不变。
+
+**被替代方案**：① 让库直接读环境变量/注册表（否决：wasm 后端不可用、破坏确定性与快照门禁、引入平台条件编译）；② 模板直接写文件（否决：违反「不执行、不 I/O」与红线 2 的资产不入库）；③ 哈希缺失时按「未登记」放行（否决：假通过，违反 fail-closed 与 ADR-0011 的同类口径）。
+
 ## 附 · 声明策略：具体类型用真实定义
 
-`declare` 只支持函数签名、抽象类型与实现关系，不能声明 `struct` / `enum` / `trait` / `suberror` / type alias（编译器报「Cannot declare a type with concrete definition」）。因此具体数据类型（12 个值类型、`BuildPlanner` trait、`MoonAndroidError` 的 9 个错误构造）一律用**真实类型定义**——只有类型形状、无业务逻辑；4 个公开函数为**真实实现**（0 条 `0068`，无 `declare` 占位）。公开 API 带 `///` 文档注释；`pkg.generated.mbti` 快照与源码对账一致，**冻结后签名变更即破坏性变更**。
+`declare` 只支持函数签名、抽象类型与实现关系，不能声明 `struct` / `enum` / `trait` / `suberror` / type alias（编译器报「Cannot declare a type with concrete definition」）。因此具体数据类型（R4 后共 **24 个值类型**、`BuildPlanner` trait、`MoonAndroidError` 的 **14 个错误构造**）一律用**真实类型定义**——只有类型形状、无业务逻辑；**14 个公开函数**为**真实实现**（0 条 `0068`，无 `declare` 占位）。公开 API 带 `///` 文档注释；`pkg.generated.mbti` 快照与源码对账一致，**冻结后签名变更即破坏性变更**（R4 全部为加法性新增，既有签名未改）。

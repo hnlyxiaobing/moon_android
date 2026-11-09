@@ -26,7 +26,7 @@ ADR-0005 的 O6 决策把「参数化模板」排在「一次性 shell APK 脚�
 | `config.entry_url` | `String?` | WebView 入口 URL | `AndroidManifest.xml` 的 `moon_android.entry_url` meta-data（XML 转义；`None` 不生成） |
 | `config.min_sdk` / `target_sdk` | `Int32` | SDK 范围 | `AndroidManifest.xml` 的 `uses-sdk` |
 | `config.signing_schemes` / `keystore_ref` | `Array[SigningScheme]` / `String` | 签名方案与密钥引用 | `BuildPlan` 的 `Apksigner` 步骤（`--vN-signing-enabled`；密钥只以 `$KEYSTORE_REF` 出现） |
-| `config.toolchain` | `ToolchainVersions` | 版本锁（7 必填 + 可选 cmake） | `native/CMakeLists.txt` 的 `cmake_minimum_required`；脚本文本头部的版本注释；`$AAPT2` 等工具版本来源 |
+| `config.toolchain` | `ToolchainVersions` | 版本锁（7 必填 + 可选 cmake） | `src/native/CMakeLists.txt` 的 `cmake_minimum_required`；脚本文本头部的版本注释；`$AAPT2` 等工具版本来源 |
 
 ## 3. 生成目录树（模板根固定 `build/android`）
 
