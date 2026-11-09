@@ -355,8 +355,9 @@ fn render_strings(app_name : String) -> String {
 }
 
 ///|
-/// 内部助手：生成 `native/CMakeLists.txt`（soname / CMake 版本来自
-/// 版本锁；模块依赖不写入此处）。
+/// 内部助手：生成 `src/native/CMakeLists.txt`（与计划的 `$CMAKE -S src/native`
+/// 对齐；target 名 = soname，满足计划里的 `--target <soname>`；输出文件名
+/// 由 `OUTPUT_NAME` 固定为 `lib<stem>.so`）。
 fn render_cmake(config : BuildConfig) -> String {
   let library = soname(config)
   let stem = soname_stem(library)
@@ -368,8 +369,12 @@ fn render_cmake(config : BuildConfig) -> String {
   text = text + "cmake_minimum_required(VERSION " + cmake_version + ")\n"
   text = text + "project(moon_android_app C)\n"
   text = text + "set(MOON_ANDROID_SONAME \"" + library + "\")\n"
-  text = text + "add_library(" + stem + " SHARED native/stub.c)\n"
-  text = text + "target_link_libraries(" + stem + " log)\n"
+  text = text + "add_library(" + library + " SHARED stub.c)\n"
+  text = text + "set_target_properties(" + library + " PROPERTIES\n"
+  text = text + "  OUTPUT_NAME \"" + stem + "\"\n"
+  text = text + "  PREFIX \"lib\"\n"
+  text = text + "  SUFFIX \".so\")\n"
+  text = text + "target_link_libraries(" + library + " log)\n"
   text
 }
 
@@ -480,7 +485,7 @@ pub fn plan_template(
     content: render_strings(params.app_name),
   })
   files.push({
-    path: "native/CMakeLists.txt",
+    path: "src/native/CMakeLists.txt",
     kind: NativeBuild,
     content: render_cmake(plan.config),
   })
@@ -650,7 +655,10 @@ pub fn render_template_script(
       "'\n"
   }
   // --- 阶段 4：构建计划 ---
+  // 先进入模板根，使计划里的相对路径（src/native、res、AndroidManifest.xml、
+  // gen、out）与生成目录树一致。
   text = text + "\n# --- 4/4 build plan (\{plan.steps.length()} steps) ---\n"
+  text = text + "cd " + tree.root + "\n"
   text = text + plan_steps_text(plan, "render_template_script")
   text
 }
