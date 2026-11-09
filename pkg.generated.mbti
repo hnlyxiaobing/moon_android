@@ -20,9 +20,13 @@ pub fn plan_build(BuildConfig, Array[Abi]) -> BuildPlan raise MoonAndroidError
 
 pub fn plan_native_libs(Array[Abi], String) -> Array[NativeLib] raise MoonAndroidError
 
+pub fn plan_template(TemplateParams) -> GeneratedTree raise MoonAndroidError
+
 pub fn render_native_manifest(Array[NativeLib]) -> String raise MoonAndroidError
 
 pub fn render_script(BuildPlan) -> String raise MoonAndroidError
+
+pub fn render_template_script(GeneratedTree) -> String raise MoonAndroidError
 
 pub fn validate_native_manifest(Array[NativeLib], Array[Abi]) -> Unit raise MoonAndroidError
 
@@ -68,6 +72,12 @@ pub(all) struct Artifact {
   sha256 : String
   abis : Array[Abi]
   signatures : Array[SigningScheme]
+}
+
+pub(all) struct AssetInjection {
+  source : String
+  target : String
+  sha256 : String
 }
 
 pub(all) struct BuildConfig {
@@ -121,6 +131,30 @@ pub(all) enum Gate {
 }
 pub fn Gate::to_repr(Self) -> @debug.Repr
 
+pub(all) struct GeneratedFile {
+  path : String
+  kind : GeneratedKind
+  content : String
+}
+
+pub(all) enum GeneratedKind {
+  ManifestXml
+  StringsXml
+  NativeBuild
+  ModuleDeps
+  AbiManifest
+  AssetManifest
+}
+
+pub(all) struct GeneratedTree {
+  root : String
+  app_name : String
+  files : Array[GeneratedFile]
+  native_libs : Array[NativeLib]
+  assets : Array[AssetInjection]
+  build_plan : BuildPlan
+}
+
 pub(all) struct LibHash {
   abi : Abi
   sha256 : String
@@ -142,6 +176,13 @@ pub(all) enum SigningScheme {
   V2
   V3
   V31
+}
+
+pub(all) struct TemplateParams {
+  config : BuildConfig
+  app_name : String
+  module_deps : Array[String]
+  assets : Array[AssetInjection]
 }
 
 pub(all) struct ToolchainVersions {
