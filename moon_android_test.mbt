@@ -3,7 +3,7 @@
 // Run `moon test` to execute and `moon test --update` to refresh snapshots.
 
 ///|
-/// 全部必锁版本齐备的工具链样例（版本 pin 参照 ADR-0010）。
+/// 全部必锁版本齐备的工具链样例（版本锁策略与 pin 值见 DECISIONS.md）。
 fn locked_toolchain() -> @moon_android.ToolchainVersions {
   {
     moon_cli: "moon 0.1.20261104",

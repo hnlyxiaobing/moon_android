@@ -938,8 +938,8 @@ pub fn verify_artifact(
 /// 返回本项目建议的 CI 门禁序列（纯常量、确定性、可并发）。
 ///
 /// 顺序：`FmtCheck → Check → CheckDenyWarn → TestCoverage → Bench →
-/// InfoSnapshot → VersionLock`。`CheckDenyWarn` 在建议序列中，
-/// 但按 ADR-0007 本轮豁免执行。
+/// InfoSnapshot → VersionLock`。`CheckDenyWarn` 在建议序列中并作硬门禁
+/// 执行（实现完成后 0068 归零，早期实现未完成阶段的临时豁免已失效）。
 pub fn ci_gate_plan() -> Array[Gate] {
   [
     Gate::FmtCheck,
