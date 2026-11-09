@@ -6,11 +6,25 @@ import {
 }
 
 // Values
+pub fn abi_dir_name(Abi) -> String
+
+pub fn attach_native_hashes(Array[NativeLib], Array[LibHash]) -> Array[NativeLib] raise MoonAndroidError
+
 pub fn ci_gate_plan() -> Array[Gate]
+
+pub fn dual_abi_set() -> Array[Abi]
+
+pub fn parse_abi_dir_name(String) -> Abi raise MoonAndroidError
 
 pub fn plan_build(BuildConfig, Array[Abi]) -> BuildPlan raise MoonAndroidError
 
+pub fn plan_native_libs(Array[Abi], String) -> Array[NativeLib] raise MoonAndroidError
+
+pub fn render_native_manifest(Array[NativeLib]) -> String raise MoonAndroidError
+
 pub fn render_script(BuildPlan) -> String raise MoonAndroidError
+
+pub fn validate_native_manifest(Array[NativeLib], Array[Abi]) -> Unit raise MoonAndroidError
 
 pub fn verify_artifact(BuildPlan, Artifact) -> Bool raise MoonAndroidError
 
@@ -26,6 +40,11 @@ pub suberror MoonAndroidError {
   SigningSchemeConflict(String)
   ArtifactMismatch(String)
   MissingGate(Gate)
+  MissingAbi(String)
+  InvalidNativeLib(String)
+  InvalidAsset(String)
+  InvalidTemplate(String)
+  InvalidJdkProbe(String)
 }
 pub fn MoonAndroidError::to_repr(Self) -> @debug.Repr
 
@@ -101,6 +120,18 @@ pub(all) enum Gate {
   VersionLock
 }
 pub fn Gate::to_repr(Self) -> @debug.Repr
+
+pub(all) struct LibHash {
+  abi : Abi
+  sha256 : String
+}
+
+pub(all) struct NativeLib {
+  abi : Abi
+  dir : String
+  soname : String
+  sha256 : String?
+}
 
 pub(all) struct PackageId {
   name : String

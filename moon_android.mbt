@@ -138,6 +138,11 @@ pub suberror MoonAndroidError {
   SigningSchemeConflict(String)
   ArtifactMismatch(String)
   MissingGate(Gate)
+  MissingAbi(String)
+  InvalidNativeLib(String)
+  InvalidAsset(String)
+  InvalidTemplate(String)
+  InvalidJdkProbe(String)
 }
 
 ///|
@@ -797,15 +802,12 @@ pub fn plan_build(
 }
 
 ///|
-/// 把构建计划渲染为可审阅的脚本文本（仍不执行）。
-///
-/// - 确定性：同输入两次渲染逐字相等；输出只由 `plan` 值决定。
-/// - 错误：`InvalidStepOrder`（步骤序列违反规范全序）、`MissingTool`
-///   （步骤所需工具在 `plan.config.toolchain` 中缺失）；
-///   为防密钥泄漏，`keystore_ref` 内嵌密钥材料时额外以
-///   `KeyMaterialEmbedded` 拒绝渲染（安全优先于渲染宽容度）。
-/// - 非目标：不 spawn 进程、不读写文件。
-pub fn render_script(plan : BuildPlan) -> String raise MoonAndroidError {
+/// 内部助手：渲染计划的公共正文（不含 shebang）。`origin` 只影响首行标注，
+/// 用于区分 `render_script` / `render_template_script` 两个入口。
+fn plan_steps_text(
+  plan : BuildPlan,
+  origin : String,
+) -> String raise MoonAndroidError {
   let config = plan.config
   if looks_like_key_material(config.keystore_ref) {
     raise KeyMaterialEmbedded
@@ -823,9 +825,10 @@ pub fn render_script(plan : BuildPlan) -> String raise MoonAndroidError {
     scheme_names.push(signing_scheme_name(scheme))
   }
   let mut text = ""
-  text = text + "#!/bin/sh\n"
   text = text +
-    "# rendered by moon_android::render_script — deterministic review artifact; DO NOT EXECUTE\n"
+    "# rendered by moon_android::" +
+    origin +
+    " — deterministic review artifact; DO NOT EXECUTE\n"
   text = text + "# package_id: " + base + "\n"
   text = text + "# activity: " + activity_name(config.activity) + "\n"
   text = text +
@@ -874,6 +877,19 @@ pub fn render_script(plan : BuildPlan) -> String raise MoonAndroidError {
   text = text +
     "\n# end of plan: \{total} steps; moon_android never executes this script\n"
   text
+}
+
+///|
+/// 把构建计划渲染为可审阅的脚本文本（仍不执行）。
+///
+/// - 确定性：同输入两次渲染逐字相等；输出只由 `plan` 值决定。
+/// - 错误：`InvalidStepOrder`（步骤序列违反规范全序）、`MissingTool`
+///   （步骤所需工具在 `plan.config.toolchain` 中缺失）；
+///   为防密钥泄漏，`keystore_ref` 内嵌密钥材料时额外以
+///   `KeyMaterialEmbedded` 拒绝渲染（安全优先于渲染宽容度）。
+/// - 非目标：不 spawn 进程、不读写文件。
+pub fn render_script(plan : BuildPlan) -> String raise MoonAndroidError {
+  "#!/bin/sh\n" + plan_steps_text(plan, "render_script")
 }
 
 ///|
