@@ -461,8 +461,10 @@ test "render_script golden：确定性脚本文本快照" {
       #|#   in: classes.dex -> out: com.example.app-unsigned.apk
       #|#   tools: jar@17
       #|cp com.example.app.res.apk com.example.app-unsigned.apk && $JAR uf com.example.app-unsigned.apk classes.dex
-      #|$JAR uf com.example.app-unsigned.apk -C out/native/arm64-v8a libapp.so
-      #|$JAR uf com.example.app-unsigned.apk -C out/native/armeabi-v7a libapp.so
+      #|mkdir -p out/native/arm64-v8a/lib/arm64-v8a && cp out/native/arm64-v8a/libapp.so out/native/arm64-v8a/lib/arm64-v8a/libapp.so
+      #|$JAR uf com.example.app-unsigned.apk -C out/native/arm64-v8a lib/arm64-v8a/libapp.so
+      #|mkdir -p out/native/armeabi-v7a/lib/armeabi-v7a && cp out/native/armeabi-v7a/libapp.so out/native/armeabi-v7a/lib/armeabi-v7a/libapp.so
+      #|$JAR uf com.example.app-unsigned.apk -C out/native/armeabi-v7a lib/armeabi-v7a/libapp.so
       #|
       #|# [7/10] Zipalign
       #|#   in: com.example.app-unsigned.apk -> out: com.example.app-aligned.apk
