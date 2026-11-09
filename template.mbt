@@ -1,5 +1,5 @@
 ///|
-/// 通用模板（ADR-0005 O6）：把「一次性 shell APK 脚本」验证通路抽象为
+/// 通用模板：把「一次性 shell APK 脚本」验证通路抽象为
 /// **参数化模板**。
 ///
 /// 输入 `TemplateParams`（包名 / 应用名 / ABI 集合 / 模块依赖 / 资产注入 /
@@ -14,7 +14,7 @@
 /// 资产注入声明。资产内容**不入库**：只登记源路径、APK 内目标路径与
 /// SHA-256（由组合根计算并校验）。
 ///
-/// - `source`：相对工作区的源文件路径（`[A-Za-z0-9_.-]` 与 `/`，禁穿越）；
+/// - `source`：相对本仓库根目录的源文件路径（`[A-Za-z0-9_.-]` 与 `/`，禁穿越）；
 /// - `target`：`assets/` 下的相对路径（禁穿越、禁重复）；
 /// - `sha256`：64 位十六进制。
 pub(all) struct AssetInjection {
@@ -29,7 +29,7 @@ pub(all) struct AssetInjection {
 /// - `config.package_id` = 包名；`config.abis` = ABI 集合；
 /// - `app_name` 写入 `res/values/strings.xml` 的 `app_name`；
 /// - `module_deps` 是**文本契约**（组合根据此写目标 App 的 `moon.pkg`），
-///   本库不 import 任何模块（ADR-0002）；
+///   本库不 import 任何模块；
 /// - `assets` 为资产注入声明（只登记路径与哈希）。
 pub(all) struct TemplateParams {
   config : BuildConfig
@@ -60,7 +60,7 @@ pub(all) struct GeneratedFile {
 ///|
 /// 模板生成计划（纯值，不含可执行动作）。
 ///
-/// - `root`：生成根（固定 `build/android`，相对工作区）；
+/// - `root`：生成根（固定 `build/android`，相对本仓库根目录）；
 /// - `files`：生成的声明式文件（顺序固定，见 `docs/TEMPLATE.md`）；
 /// - `native_libs`：双 ABI `.so` 布局（`sha256 = None`，构建后由
 ///   `attach_native_hashes` 回填）；
@@ -76,7 +76,7 @@ pub(all) struct GeneratedTree {
 }
 
 ///|
-/// 模板生成根（相对工作区，固定值）。
+/// 模板生成根（相对本仓库根目录，固定值）。
 fn template_root() -> String {
   "build/android"
 }

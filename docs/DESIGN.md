@@ -8,7 +8,7 @@ APK 打包链的**纯 MoonBit 计划/配置库**。职责：把「包名 + 入�
 
 R4 在既有计划层之上补齐三块**仍然纯值**的能力：
 
-1. **通用模板**（ADR-0005 O6）：`TemplateParams` → `GeneratedTree` → `render_template_script`（映射见 `TEMPLATE.md`）；
+1. **通用模板**：`TemplateParams` → `GeneratedTree` → `render_template_script`（映射见 `TEMPLATE.md`）；
 2. **双 ABI `.so` 管理**：ABI 目录 / 清单 / SHA-256 登记与 fail-closed 校验（`../native_abi.mbt`）；
 3. **Windows JDK 探测**：库内只做纯评估器，环境/注册表采集归组合根（`../jdk.mbt`；风险见 `EXECUTION-CHAIN.md`）。
 
@@ -136,8 +136,8 @@ R4 新增（加法性，签名冻结）：
 
 - **Android native 产物链路**（最高优先级待验证假设）：MoonBit → C 源码/对象 → NDK clang + CMake 能否产出可加载 `.so`，本仓库无复现实验（见 §7）。
 - **设备端最小验证资产缺失**：一次性打包脚本、真实 APK 与红米电视资产均不在本仓库，「一条命令到设备启动」尚未复现。
-- **执行链环境缺口**（R4 实测）：JAVA_HOME 失效、build-tools/platform/JDK 与锁不符、NDK/CMake 缺失 → 按锁定版本不可执行；版本升级属 ADR-0010 §4 流程。
-- **Assemble 打包条目路径缺口**（已知）：既有 `render_script` 把 `.so` 放在 APK 根而非 `lib/<abi>/`；按红线只登记不改 golden，待主控裁决（`EXECUTION-CHAIN.md` G-1）。
+- **执行链环境缺口**（R4 实测）：JAVA_HOME 失效、build-tools/platform/JDK 与锁不符、NDK/CMake 缺失 → 按锁定版本不可执行；版本升级走本仓库独立升级流程。
+- **Assemble 打包条目路径缺口**（已知）：既有 `render_script` 把 `.so` 放在 APK 根而非 `lib/<abi>/`；按红线只登记不改 golden，待本仓库维护者决定（`EXECUTION-CHAIN.md` G-1）。
 - **CMake target 名与输出名**：模板已按计划对齐（target = soname、OUTPUT_NAME = stem），但本机无 cmake 未实测（G-2）。
 - legacy 模板迁移后的可编译性未验证（仅参照，不可依赖）。
 - **sha256 组合根自动化**（P2 未做）：`.so`/APK/资产哈希仍需外部脚本回填。

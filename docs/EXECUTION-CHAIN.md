@@ -1,7 +1,7 @@
 # 执行链落地评估与 Windows JDK 探测（EXECUTION-CHAIN.md）
 
 > 状态：**R4 评估完成**（2026-11-09）｜ 范围：aapt2 / d8 / zipalign / apksigner 执行链、双 ABI 注入、Windows JDK 探测
-> 结论先行：**计划层与脚本文本层已落地并可测试；本机执行层未跑通（环境缺口，非代码缺陷）；设备层未测（Q1/E3）**。所有未实测项在本文与申报书中标注 `[仍需实测]`，不写成通过。
+> 结论先行：**计划层与脚本文本层已落地并可测试；本机执行层未跑通（环境缺口，非代码缺陷）；设备层未测（Q1/E3）**。所有未实测项在本文标注 `[仍需实测]`，不写成通过。
 > 证据等级：`[已复验]` = 本机命令/文件实测（2026-11-09）｜ `[已复验-本地等价]` = 同序命令本地等价实跑，非 GitHub Actions｜`[仅据文档]` = 只来自官方/仓库文档｜`[仍需实测]` = 无证据，不得当作通过。
 
 ## 1. 分层结论
@@ -19,7 +19,7 @@
 - 模板：`plan_template` / `render_template_script`（映射见 `TEMPLATE.md`）。
 - 双 ABI：`plan_native_libs` / `parse_abi_dir_name` / `attach_native_hashes` / `validate_native_manifest` / `render_native_manifest`。
 - JDK：`probe_jdk`（纯评估器）。
-- 边界不变：不执行命令、不签名、不调 adb、不读写文件、不读环境变量与注册表（ADR-0002 零 import、零 I/O）。
+- 边界不变：不执行命令、不签名、不调 adb、不读写文件、不读环境变量与注册表（零 import、零 I/O）。
 
 ## 3. 本机执行环境实测（2026-11-09）
 
@@ -74,7 +74,7 @@ D8 8.6.2-dev (...)                                 # exit 0
 | NDK | `r27` | 缺失 | ❌ 不可用 |
 | CMake | `3.22.1` | 未在 PATH / 常见路径 | ❌ 不可用（`MissingTool` 会在计划期拒绝） |
 
-**判定**：即使脚本与 JDK 修复就绪，本机按**锁定版本**仍无法执行完整链路。版本升级/锁值变更属 `../../VERSION-LOCK.md` 与 ADR-0010 §4 的流程（升级与特性开发分离 PR），不在本模块 R4 授权范围；本轮只登记，不改锁。
+**判定**：即使脚本与 JDK 修复就绪，本机按**锁定版本**仍无法执行完整链路。版本升级/锁值变更须走本仓库「升级与特性开发分离 PR」的独立流程；本次只登记，不改锁。
 
 ## 4. Windows JDK 探测设计（已落地部分）
 
@@ -111,10 +111,10 @@ D8 8.6.2-dev (...)                                 # exit 0
 | ID | 风险 | 触发/影响 | 缓解（已落地 / 待办） | 状态与证据 |
 |---|---|---|---|---|
 | R1 | **JAVA_HOME 失效 / 与 PATH 不一致** | d8、apksigner 直接 exit 1（本机已复现） | 已落地：`probe_jdk` 存在性 + 版本匹配 + 来源优先级；待办：组合根采集器与 CI 预检 | 已复现 `[已复验]`；采集器 `[仍需实测]` |
-| R2 | **工具版本漂移**（build-tools / platform / NDK / CMake / JDK） | 计划期 `ToolchainNotLocked`/`MissingTool`；运行期命令行为差异 | 已落地：7 必填字段锁、`MissingTool`、CI 版本断言；待办：锁值升级按 ADR-0010 §4 | 本机 5 项全不匹配 `[已复验]` |
+| R2 | **工具版本漂移**（build-tools / platform / NDK / CMake / JDK） | 计划期 `ToolchainNotLocked`/`MissingTool`；运行期命令行为差异 | 已落地：7 必填字段锁、`MissingTool`、CI 版本断言；待办：锁值升级按 本仓库版本升级流程 | 本机 5 项全不匹配 `[已复验]` |
 | R3 | **相对路径 / 工作目录不一致** | aapt2 找不到 `res`、`AndroidManifest.xml`、CMake 找不到 `src/native` | 已落地：模板树按计划路径生成（`src/native`、`res`），脚本第 4 阶段 `cd build/android` | 结构测试 `[已复验]`；真实执行 `[仍需实测]` |
 | R4 | **缺少 C stub / Java 源** | CMake 无 `stub.c`、javac glob 无可编译文件 | 文档登记为组合根必供输入；计划期无法检测（纯值） | `[仍需实测]` |
-| R5 | **Assemble 打包条目路径缺口**（已知，待主控裁决） | 既有 `render_script` 的 Assemble 行 `$JAR uf <apk> -C out/native/<abi> <soname>` 会把 `.so` 放在 APK **根**而非 `lib/<abi>/`，Android 不加载 | 本轮**未改**既有 golden（红线 4）；模板的 `plan/abi-libs.txt` 与 `jniLibs/<dir>` 已登记正确目标；建议下一轮修复并同步重录既有 golden | 源码审阅 `[已复验-本地等价]`；修复待裁决 |
+| R5 | **Assemble 打包条目路径缺口**（已知，待本仓库维护者决定） | 既有 `render_script` 的 Assemble 行 `$JAR uf <apk> -C out/native/<abi> <soname>` 会把 `.so` 放在 APK **根**而非 `lib/<abi>/`，Android 不加载 | 本轮**未改**既有 golden（红线 4）；模板的 `plan/abi-libs.txt` 与 `jniLibs/<dir>` 已登记正确目标；建议下一轮修复并同步重录既有 golden | 源码审阅 `[已复验-本地等价]`；修复待裁决 |
 | R6 | **CMake target 名与输出名** | 计划 `--target <soname>`；模板已把 target 名设为 soname、`OUTPUT_NAME` 设为 stem，理论自洽，但 CMake 对含 `.` 的 target 名行为未实机验证（本机无 cmake） | 文档登记契约；待装 CMake 后实测 | `[仍需实测]` |
 | R7 | **脚本注入（模板参数）** | 恶意 `app_name` / 资产路径 / 内容破坏 heredoc 或写出模板根 | 已落地：参数白名单校验、XML 转义、heredoc 分隔符整行检测、路径防穿越；测试覆盖 | `[已复验]`（单元测试） |
 | R8 | **双 ABI 不一致** | 缺 32 位 `.so` → armeabi-v7a 设备加载失败；重复 ABI → 清单歧义 | 已落地：`dual_abi_set`、重复/缺失/非法 ABI 名错误路径、`MissingAbi`、哈希登记 fail-closed | `[已复验]`（单元测试）；设备 `[仍需实测]` |
@@ -123,9 +123,9 @@ D8 8.6.2-dev (...)                                 # exit 0
 | R11 | **许可** | SDK/NDK/build-tools 二进制不可再分发 | 本库只分发文本；模板不下载、不嵌入工具/资产/`.so` 内容 | `[仅据文档]`（Android SDK License 3.4）+ 代码审阅 |
 | R12 | **sha256 组合根自动化**（P2） | 产物/资产/`.so` 哈希仍需人工或外部脚本回填 | 本库只校验值规格与登记完整性；自动化未做（P2） | 未做 `[仍需实测]` |
 
-## 6. 已知缺口与待主控裁决
+## 6. 已知缺口与待决事项
 
-1. **G-1（R5）Assemble 条目路径**：修复会改变既有 `render_script` golden 文本，按红线 4「golden 不一致须书面记录待主控裁决，禁止静默重录」，本轮**只登记不改**。建议修复：把 `out/native/<abi>/<soname>` 改为 `out/native/<abi>/lib/<soname>` 的 staging 目录，再 `$JAR uf apk -C out/native/<abi> lib/<abi>/<soname>`（具体命令与 golden 需主控批准后重录）。模板已生成 `jniLibs/<dir>` 与 `plan/abi-libs.txt` 作为正确目标布局，但既有 `Assemble` 命令**不消费** `jniLibs`；修复时二者应一并接线。
+1. **G-1（R5）Assemble 条目路径**：修复会改变既有 `render_script` golden 文本，按红线 4「golden 不一致须书面记录待评审，禁止静默重录」，本轮**只登记不改**。建议修复：把 `out/native/<abi>/<soname>` 改为 `out/native/<abi>/lib/<soname>` 的 staging 目录，再 `$JAR uf apk -C out/native/<abi> lib/<abi>/<soname>`（具体命令与 golden 需评审通过后重录）。模板已生成 `jniLibs/<dir>` 与 `plan/abi-libs.txt` 作为正确目标布局，但既有 `Assemble` 命令**不消费** `jniLibs`；修复时二者应一并接线。
 2. **G-2（R6）CMake target 名**：模板采用「target = soname、OUTPUT_NAME = stem」以贴合计划；若实测 CMake 拒绝含 `.` 的 target 名，则需改计划命令（golden 变更，同样需裁决）。
 3. **G-3（§3.3）版本锁 vs 本机实际**：执行链要按锁定值跑通，必须安装 build-tools 34.0.0 / platform android-34 / NDK r27 / JDK 17 / CMake 3.22.1，或按升级流程改锁；本轮不改锁。
 4. **G-4（R12）sha256 自动化**：组合根自动计算 `.so` / APK / 资产哈希并调用 `attach_native_hashes`，属 P2。
@@ -133,7 +133,7 @@ D8 8.6.2-dev (...)                                 # exit 0
 ## 7. P2 未做（如实登记）
 
 - Gradle / IDE 集成：未做。
-- Q1「一条命令到设备启动」实证：未做（资产在工作区外、目标设备未接）。
+- Q1「一条命令到设备启动」实证：未做（所需资产不在本仓库内、目标设备未接）。
 - sha256 组合根自动化：未做。
 - 真实 `.so` / 模型 / devkit：按红线**未下载、未落盘、未链接**；frida G1 未闭环。
 

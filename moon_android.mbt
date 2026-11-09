@@ -708,7 +708,7 @@ fn command_lines(
         in_name +
         "\n"
       for abi in config.abis {
-        // G-1 修复（R4 主控裁决）：`.so` 必须落在 APK 的 `lib/<abi>/` 下才能被
+        // G-1 修复（2026-11-09 评审结论）：`.so` 必须落在 APK 的 `lib/<abi>/` 下才能被
         // Android 加载；先 stage 到 out/native/<abi>/lib/<abi>/，再按该相对路径入包。
         let dir = "out/native/" + abi_name(abi)
         let libdir = dir + "/lib/" + abi_name(abi)

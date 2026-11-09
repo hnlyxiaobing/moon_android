@@ -67,8 +67,8 @@
 
 - **Android native 产物链路（最高优先级待验证假设）**：「MoonBit → C 源码/对象 → NDK clang + CMake」能否产出可加载 `.so`（native `foreign_library` 不能导出 `.so`）——这是设备端交付通路的前提，开发期报告称手工跑通但**本仓库无复现证据**。最小实验：最小 MoonBit 模块 + 一个 C stub，NDK clang 编出 `.so`，塞进 shell APK，在设备上加载并打印。
 - **设备端最小验证资产缺失**：「从 `moon build` 到应用启动一条命令」的验收基线依赖一次性打包脚本、真实 APK 与目标设备（红米电视）资产，**均不在本仓库**，当前无法在本仓库内复现。
-- **执行链环境缺口（R4 实测）**：`JAVA_HOME` 失效、build-tools/platform/JDK 与锁值不符、NDK/CMake 缺失 → 按锁定版本不可执行；属环境与版本锁流程（ADR-0010 §4），不是库代码缺陷。详见 `docs/EXECUTION-CHAIN.md` §3。
-- **已知缺口 G-1（待主控裁决）**：既有 `render_script` 的 Assemble 行把 `.so` 放在 APK 根而非 `lib/<abi>/`；按红线 4 只书面登记、不静默重录既有 golden。详见 `docs/EXECUTION-CHAIN.md` §6。
+- **执行链环境缺口（R4 实测）**：`JAVA_HOME` 失效、build-tools/platform/JDK 与锁值不符、NDK/CMake 缺失 → 按锁定版本不可执行；属环境与版本锁流程，不是库代码缺陷。详见 `docs/EXECUTION-CHAIN.md` §3。
+- **已知缺口 G-1（待本仓库维护者决定）**：既有 `render_script` 的 Assemble 行把 `.so` 放在 APK 根而非 `lib/<abi>/`；按红线 4 只书面登记、不静默重录既有 golden。详见 `docs/EXECUTION-CHAIN.md` §6。
 - **CMake target 名**：模板以 target = soname、`OUTPUT_NAME` = stem 对齐计划命令；本机无 cmake，`[仍需实测]`。
 - legacy 模板迁移后的可编译性未验证（`create-moonbit-raylib-android-app` 仅作参照）。
 

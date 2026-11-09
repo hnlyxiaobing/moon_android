@@ -1,6 +1,6 @@
 # moon_android · 公开 API（API.md）
 
-> **API 冻结语义**：既有签名变更即破坏性变更；R4 全部改动为**加法性新增**（新类型 / 新函数 / 新错误构造），快照 `../pkg.generated.mbti` 只增不删（`../../COMPATIBILITY.md` §10 三件套：快照审阅 + `../../API-CHANGELOG.md` 条目 + CI 第 5 道门禁；条目文本由主控登记）。
+> **API 冻结语义**：既有签名变更即破坏性变更；R4 全部改动为**加法性新增**（新类型 / 新函数 / 新错误构造），快照 `../pkg.generated.mbti` 只增不删。本仓库三件套：快照审阅 + `docs/API.md` 变更登记 + CI 第 5 道快照门禁，三者齐备方可合入。
 > **14 个公开函数**（4 既有 + 10 新增）均为**真实实现**（`pub fn`，非 `declare` 占位，0 条 `0068`）。
 > `preferred_target = "wasm"`（未改动）。错误传播统一 `raise MoonAndroidError`。
 > **纯 MoonBit 库**：无 `#external`、无 `extern "C"`、无回调、无 I/O、无脚本执行；JDK 探测为纯评估器（不读环境/注册表）。
@@ -86,7 +86,7 @@
 
 ## Wire / 跨模块提示
 
-`moon_abi` 只以**文本片段**衔接（`module_deps` 文本契约），不传递结构化类型（ADR-0002）。`apk` 是逆向解析库，本库不 import、不解析 APK。`TemplateParams.module_deps` 只是「组合根写目标 App `../moon.pkg`」的输入清单，本库不写任何文件。
+`moon_abi` 只以**文本片段**衔接（`module_deps` 文本契约），不传递结构化类型。`apk` 是逆向解析库，本库不 import、不解析 APK。`TemplateParams.module_deps` 只是「组合根写目标 App `../moon.pkg`」的输入清单，本库不写任何文件。
 
 ## 非目标
 
