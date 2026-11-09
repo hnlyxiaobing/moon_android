@@ -8,7 +8,7 @@
 /// 脚本文本。
 ///
 /// 边界：本文件仍然**不执行**任何命令、不读写文件、不下载工具；脚本由
-/// 组合根执行或审阅。模板 → 生成目录树的映射见 `TEMPLATE.md`。
+/// 组合根执行或审阅。模板 → 生成目录树的映射见 `docs/TEMPLATE.md`。
 
 ///|
 /// 资产注入声明。资产内容**不入库**：只登记源路径、APK 内目标路径与
@@ -61,7 +61,7 @@ pub(all) struct GeneratedFile {
 /// 模板生成计划（纯值，不含可执行动作）。
 ///
 /// - `root`：生成根（固定 `build/android`，相对工作区）；
-/// - `files`：生成的声明式文件（顺序固定，见 `TEMPLATE.md`）；
+/// - `files`：生成的声明式文件（顺序固定，见 `docs/TEMPLATE.md`）；
 /// - `native_libs`：双 ABI `.so` 布局（`sha256 = None`，构建后由
 ///   `attach_native_hashes` 回填）；
 /// - `assets`：资产注入声明（渲染脚本时重新校验）；

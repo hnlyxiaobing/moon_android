@@ -12,7 +12,7 @@
 ///    输出 `JdkProbeResult`。
 ///
 /// 该设计让 JDK 探测可被单元测试（受控环境变量与目录快照），且不破坏
-/// 本库的确定性与 API 快照测试。风险结论登记于 `EXECUTION-CHAIN.md`。
+/// 本库的确定性与 API 快照测试。风险结论登记于 `docs/EXECUTION-CHAIN.md`。
 
 ///|
 /// JDK 候选来源（优先级从高到低）。

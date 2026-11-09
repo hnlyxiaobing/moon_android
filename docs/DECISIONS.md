@@ -35,7 +35,7 @@
 
 - **事实**：R4 已实现 `plan_template`（`TemplateParams` → `GeneratedTree`）与 `render_template_script`（四阶段脚本），把参数化（包名/应用名/ABI/模块依赖/资产注入）固化为可测试接口；映射见 `TEMPLATE.md`。
 - **不推翻**：ADR-0005 O6 的排序（先一次性脚本证明 A4、再泛化）与决策 2 的「先验证再抽象」**原则不变**。本轮泛化的是**已被计划层验证的纯值接口**（10 步顺序、版本锁、签名约束、路径规则），**不是**设备端通路结论：E3（NDK clang + CMake 产出可加载 `.so`）与 Q1（一条命令到设备启动）仍未实测，`[仍需实测]`。
-- **风险留痕**：若设备端通路最终证明模板形状不适用，`GeneratedTree`/脚本渲染是纯值可替换层，改动局限在 `template.mbt` 与文档，不触碰已冻结的 `BuildPlan` / `render_script` 签名。
+- **风险留痕**：若设备端通路最终证明模板形状不适用，`GeneratedTree`/脚本渲染是纯值可替换层，改动局限在 `../template.mbt` 与文档，不触碰已冻结的 `BuildPlan` / `render_script` 签名。
 - **执行链**：本机环境（JAVA_HOME 失效、build-tools/platform/JDK 与锁不符、NDK/CMake 缺失）导致按锁定版本不可执行，详见 `EXECUTION-CHAIN.md` §3；该结论**不**被模板泛化掩盖。
 
 ## 决策 3 · 跨模块只以文本片段协作，用名义类型隔离消解潜在循环依赖
@@ -44,12 +44,12 @@
 
 **决策**：
 
-- 本库与 `moon_abi` 只以**配置片段文本**协作：`moon_abi` 只输出配置文本、不读打包产物；文本由组合根（未来 App 工程里的一段适配代码）写入目标 App 的 `moon.pkg`。**不 import、不传递 `LinkNativeConfig` 一类结构化类型**。
+- 本库与 `moon_abi` 只以**配置片段文本**协作：`moon_abi` 只输出配置文本、不读打包产物；文本由组合根（未来 App 工程里的一段适配代码）写入目标 App 的 `../moon.pkg`。**不 import、不传递 `LinkNativeConfig` 一类结构化类型**。
 - `Abi` 等跨模块值类型**同构但独立**定义（各模块自带一份），由组合根做转换；`#external` 句柄、JNIEnv、`FuncRef` 永不跨模块传递。
 
 **理由**：文本契约 + 名义类型隔离把依赖方向收敛为**单向数据流**，从结构上消解潜在循环依赖；各模块可独立 `moon check`、并行开发；API 边界被迫写成中性值类型，天然满足「后端可替换、实现细节不泄漏」。
 
-**后果**：组合根需要少量显式适配代码；同构类型存在结构漂移风险，靠 `pkg.generated.mbti` API 快照对账与契约测试守住。
+**后果**：组合根需要少量显式适配代码；同构类型存在结构漂移风险，靠 `../pkg.generated.mbti` API 快照对账与契约测试守住。
 
 ## 决策 4 · 解析库不承担打包
 
@@ -72,13 +72,13 @@
 
 **理由**：版本锁让构建可复现、可审计，「任一为空即拒绝」避免半锁定状态混入 CI；`0068` 豁免只是声明阶段的临时口径，其恢复条件（实现完成、`0068` 归零）是客观可判的，一旦达成就恢复最严门禁。
 
-**后果**：`Gate::CheckDenyWarn` 是 7 项建议门禁之一（固定顺序 `FmtCheck → Check → CheckDenyWarn → TestCoverage → Bench → InfoSnapshot → VersionLock`）；升级工具链须按实测版本更新锁值并重跑快照；`pkg.generated.mbti` API 快照保留在版本库中作为评审依据。
+**后果**：`Gate::CheckDenyWarn` 是 7 项建议门禁之一（固定顺序 `FmtCheck → Check → CheckDenyWarn → TestCoverage → Bench → InfoSnapshot → VersionLock`）；升级工具链须按实测版本更新锁值并重跑快照；`../pkg.generated.mbti` API 快照保留在版本库中作为评审依据。
 
 ## 决策 6 · `create-moonbit-raylib-android-app` 只作参照，不作依赖；当前零依赖
 
 **背景**：APK 打包链无现成可用方案；唯一沾边的 `create-moonbit-raylib-android-app@0.1.0` 是 **legacy 模板**（仍带 `moon.pkg.json`；普通工具链命令已不再接受 JSON manifest），直接依赖会失败。候选复用件（JNI 绑定、ZIP 解压等）均为 0.x 或有平台 / 许可限制。
 
-**决策**：纯 MoonBit 自研「计划 + 配置」；`create-moonbit-raylib-android-app` **只作设计参照、不可直接依赖**。当前**零新增依赖**：不 `moon add`、不改 `moon.pkg`、无 FFI、无外部句柄。后续新增依赖须**同时**过五条门槛并留痕：**用途**（现有能力无法以更小代价覆盖）、**许可**（SPDX 已核验、与 Apache-2.0 兼容）、**维护**（版本 / owner / 更新状态 / 是否 legacy）、**平台**（目标后端一致、不破坏独立 `moon check`）、**风险**（登记替代方案与移除成本）。
+**决策**：纯 MoonBit 自研「计划 + 配置」；`create-moonbit-raylib-android-app` **只作设计参照、不可直接依赖**。当前**零新增依赖**：不 `moon add`、不改 `../moon.pkg`、无 FFI、无外部句柄。后续新增依赖须**同时**过五条门槛并留痕：**用途**（现有能力无法以更小代价覆盖）、**许可**（SPDX 已核验、与 Apache-2.0 兼容）、**维护**（版本 / owner / 更新状态 / 是否 legacy）、**平台**（目标后端一致、不破坏独立 `moon check`）、**风险**（登记替代方案与移除成本）。
 
 **理由**：legacy 包直接依赖会因 JSON manifest 被拒；任何依赖都会引入网络 / 版本耦合并破坏「可独立 `moon check`」的性质；计划/配置层不需要任何依赖即可完成。SDK License 3.4 也禁止再分发 SDK/NDK 二进制（见决策 1），进一步压缩了可依赖面。
 
@@ -106,4 +106,4 @@
 
 ## 附 · 声明策略：具体类型用真实定义
 
-`declare` 只支持函数签名、抽象类型与实现关系，不能声明 `struct` / `enum` / `trait` / `suberror` / type alias（编译器报「Cannot declare a type with concrete definition」）。因此具体数据类型（R4 后共 **24 个值类型**、`BuildPlanner` trait、`MoonAndroidError` 的 **14 个错误构造**）一律用**真实类型定义**——只有类型形状、无业务逻辑；**14 个公开函数**为**真实实现**（0 条 `0068`，无 `declare` 占位）。公开 API 带 `///` 文档注释；`pkg.generated.mbti` 快照与源码对账一致，**冻结后签名变更即破坏性变更**（R4 全部为加法性新增，既有签名未改）。
+`declare` 只支持函数签名、抽象类型与实现关系，不能声明 `struct` / `enum` / `trait` / `suberror` / type alias（编译器报「Cannot declare a type with concrete definition」）。因此具体数据类型（R4 后共 **24 个值类型**、`BuildPlanner` trait、`MoonAndroidError` 的 **14 个错误构造**）一律用**真实类型定义**——只有类型形状、无业务逻辑；**14 个公开函数**为**真实实现**（0 条 `0068`，无 `declare` 占位）。公开 API 带 `///` 文档注释；`../pkg.generated.mbti` 快照与源码对账一致，**冻结后签名变更即破坏性变更**（R4 全部为加法性新增，既有签名未改）。

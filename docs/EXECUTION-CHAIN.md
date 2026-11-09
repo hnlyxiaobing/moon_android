@@ -74,7 +74,7 @@ D8 8.6.2-dev (...)                                 # exit 0
 | NDK | `r27` | 缺失 | ❌ 不可用 |
 | CMake | `3.22.1` | 未在 PATH / 常见路径 | ❌ 不可用（`MissingTool` 会在计划期拒绝） |
 
-**判定**：即使脚本与 JDK 修复就绪，本机按**锁定版本**仍无法执行完整链路。版本升级/锁值变更属 `VERSION-LOCK.md` 与 ADR-0010 §4 的流程（升级与特性开发分离 PR），不在本模块 R4 授权范围；本轮只登记，不改锁。
+**判定**：即使脚本与 JDK 修复就绪，本机按**锁定版本**仍无法执行完整链路。版本升级/锁值变更属 `../../VERSION-LOCK.md` 与 ADR-0010 §4 的流程（升级与特性开发分离 PR），不在本模块 R4 授权范围；本轮只登记，不改锁。
 
 ## 4. Windows JDK 探测设计（已落地部分）
 
@@ -145,7 +145,7 @@ moon check --deny-warn   # 门禁 1
 moon build               # 门禁 2
 moon test                # 门禁 3（79 tests）
 moon fmt --check         # 门禁 4
-moon info; git diff --exit-code -- pkg.generated.mbti cmd/main/pkg.generated.mbti   # 门禁 5
+moon info; git diff --exit-code -- ../pkg.generated.mbti ../cmd/main/pkg.generated.mbti   # 门禁 5
 ```
 
 本机等价实跑结果见回报与 `TEMPLATE.md` §8；**不是** GitHub Actions 实跑（Actions `[仍需实测]`）。

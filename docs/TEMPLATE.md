@@ -20,7 +20,7 @@ ADR-0005 的 O6 决策把「参数化模板」排在「一次性 shell APK 脚�
 | `config.package_id.name` | `String` | Android 包名 | `AndroidManifest.xml` 的 `package`；产物基名；soname（末段） |
 | `app_name` | `String` | 应用显示名（非空、无控制字符、≤64 字符） | `res/values/strings.xml` 的 `app_name`（XML 转义） |
 | `config.abis` | `Array[Abi]` | 生效 ABI 集合（R4 双 ABI 基线 = `arm64-v8a` + `armeabi-v7a`） | `plan/abi-libs.txt`、`jniLibs/<dir>/`、`CrossCompile`/`Assemble` 命令 |
-| `module_deps` | `Array[String]` | **模块依赖文本契约**（如 `hnlyxiaobing/moon_abi`、`bobzhang/zip@0.1.2`） | `plan/module-deps.txt`（本库不 import、不写 `moon.pkg`） |
+| `module_deps` | `Array[String]` | **模块依赖文本契约**（如 `hnlyxiaobing/moon_abi`、`bobzhang/zip@0.1.2`） | `plan/module-deps.txt`（本库不 import、不写 `../moon.pkg`） |
 | `assets` | `Array[AssetInjection]` | 资产注入声明（源路径 / `assets/` 目标 / SHA-256） | `plan/assets.txt` + 脚本第 3 阶段的 `sha256sum -c` 与 `cp` |
 | `config.activity` | `ActivityKind` | 壳 Activity 种类 | `AndroidManifest.xml` 的 shell 类名（`.MoonWebViewActivity` / `.MoonGlesActivity` / `.MoonNativeActivity`） |
 | `config.entry_url` | `String?` | WebView 入口 URL | `AndroidManifest.xml` 的 `moon_android.entry_url` meta-data（XML 转义；`None` 不生成） |
@@ -35,7 +35,7 @@ ADR-0005 的 O6 决策把「参数化模板」排在「一次性 shell APK 脚�
 | 1 | `AndroidManifest.xml` | `ManifestXml` | 包名 / SDK / 壳 Activity / 可选 entry_url | aapt2 link（`--manifest`） |
 | 2 | `res/values/strings.xml` | `StringsXml` | `app_name`（XML 转义） | aapt2 compile/link |
 | 3 | `src/native/CMakeLists.txt` | `NativeBuild` | soname（target 名 = soname，`OUTPUT_NAME` = stem）/ CMake 版本（来自版本锁） | NDK 交叉编译（`$CMAKE -S src/native`） |
-| 4 | `plan/module-deps.txt` | `ModuleDeps` | `module_deps`（文本契约） | 组合根写目标 App 的 `moon.pkg` |
+| 4 | `plan/module-deps.txt` | `ModuleDeps` | `module_deps`（文本契约） | 组合根写目标 App 的 `../moon.pkg` |
 | 5 | `plan/abi-libs.txt` | `AbiManifest` | ABI 目录 + soname → APK 条目 `lib/<dir>/<soname>` | 发布审计 / 双 ABI 核对 |
 | 6 | `plan/assets.txt` | `AssetManifest` | `assets` 三元组（target ← source + sha256） | 组合根校验与归档 |
 | 7 | `jniLibs/<abi-dir>/` | 目录（脚本第 2 阶段） | ABI 集合 | 期望 `.so` 落点（构建后由组合根放入） |
@@ -128,7 +128,7 @@ cd build/android
 ## 7. 非目标（R4 范围外）
 
 - **不执行**脚本、不签名、不调 adb、不产出 APK。
-- **不写** `moon.pkg`（`module_deps` 只是文本契约；跨模块零 import 见 ADR-0002）。
+- **不写** `../moon.pkg`（`module_deps` 只是文本契约；跨模块零 import 见 ADR-0002）。
 - **不实现** Gradle / IDE 集成（P2）。
 - **不下载** SDK/NDK/JDK；**不随附**任何工具二进制（Android SDK License 3.4）。
 - **不嵌入**资产内容或 `.so` 本体；只登记路径与 SHA-256。
@@ -138,5 +138,5 @@ cd build/android
 
 - 测试：`moon test` **79 passed / 0 failed**（2026-11-09 本机实测；含模板 16 项、ABI 11 项、JDK 13 项新增）。
 - 门禁：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check` / 第 5 道快照门禁全绿（本机等价实跑，非 GitHub Actions）。
-- 示例 golden：`moon_android_test.mbt` 的 `render_script golden`（既有，逐字未变）+ `template_test.mbt` 的 `render_template_script golden`（新增，单 ABI 全脚本）。
+- 示例 golden：`../moon_android_test.mbt` 的 `render_script golden`（既有，逐字未变）+ `../template_test.mbt` 的 `render_template_script golden`（新增，单 ABI 全脚本）。
 - 设备端：**未实测**（Q1/E3，`[仍需实测]`）。

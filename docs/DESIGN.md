@@ -9,15 +9,15 @@ APK 打包链的**纯 MoonBit 计划/配置库**。职责：把「包名 + 入�
 R4 在既有计划层之上补齐三块**仍然纯值**的能力：
 
 1. **通用模板**（ADR-0005 O6）：`TemplateParams` → `GeneratedTree` → `render_template_script`（映射见 `TEMPLATE.md`）；
-2. **双 ABI `.so` 管理**：ABI 目录 / 清单 / SHA-256 登记与 fail-closed 校验（`native_abi.mbt`）；
-3. **Windows JDK 探测**：库内只做纯评估器，环境/注册表采集归组合根（`jdk.mbt`；风险见 `EXECUTION-CHAIN.md`）。
+2. **双 ABI `.so` 管理**：ABI 目录 / 清单 / SHA-256 登记与 fail-closed 校验（`../native_abi.mbt`）；
+3. **Windows JDK 探测**：库内只做纯评估器，环境/注册表采集归组合根（`../jdk.mbt`；风险见 `EXECUTION-CHAIN.md`）。
 
 按「先验证再抽象」的排序决策（`DECISIONS.md` 决策 2），模板泛化仍**不等于**设备端通路已验证：Q1/E3 未测前，模板只是把已确定的计划层固定为可测试接口。
 
 ## 2. 模块边界 / 依赖方向 / 数据流
 
 ```
-moon_abi::render ──(配置片段文本，非 import)──► 组合根写入未来 App 的 moon.pkg
+moon_abi::render ──(配置片段文本，非 import)──► 组合根写入未来 App 的 ../moon.pkg
                                                    │
 BuildConfig + Abis                                  ▼
    ├─► moon_android::plan_build ──► BuildPlan ──► render_script ──► 脚本文本（仅可审阅，不执行）
@@ -111,7 +111,7 @@ R4 新增（加法性，签名冻结）：
 
 ## 9. 可替换性与实现细节不泄漏
 
-上层只看到 `BuildPlan` / `ToolchainVersions` / `Artifact` / `Gate` / `GeneratedTree` / `NativeLib` / `JdkProbeResult`；看不到 aapt2/d8 命令字符串、主机路径、JDK 采集细节、双 ABI so 布局、Activity XML 模板。换 build-tools / NDK 版本只改 `ToolchainVersions`；换壳 Activity 只改 `ActivityKind`；换签名方案只改 `Array[SigningScheme]`；换模板参数不改上层调用。若后续证明设备端通路由一次性脚本更合适，可直接把 `render_script` / `render_template_script` 的输出替换掉，不改上层调用（`README.md`「排序修正」）。
+上层只看到 `BuildPlan` / `ToolchainVersions` / `Artifact` / `Gate` / `GeneratedTree` / `NativeLib` / `JdkProbeResult`；看不到 aapt2/d8 命令字符串、主机路径、JDK 采集细节、双 ABI so 布局、Activity XML 模板。换 build-tools / NDK 版本只改 `ToolchainVersions`；换壳 Activity 只改 `ActivityKind`；换签名方案只改 `Array[SigningScheme]`；换模板参数不改上层调用。若后续证明设备端通路由一次性脚本更合适，可直接把 `render_script` / `render_template_script` 的输出替换掉，不改上层调用（`../README.md`「排序修正」）。
 
 ## 10. 测试策略
 
@@ -123,7 +123,7 @@ R4 新增（加法性，签名冻结）：
 | 模板（R4） | 6 文件映射；XML 5 字符转义；app_name 64 边界；模块依赖/资产错误路径；篡改树（路径穿越/重复/heredoc 注入/密钥/缺工具）；单 ABI 全脚本 golden |
 | JDK（R4） | JAVA_HOME 优先/引号/尾斜杠/大小写去重；版本不符回退注册表；常见路径/PATH 回退；未匹配/未找到；非法 `required_major`；非法候选跳过；版本缺失诊断；`1.8.0_202` → 8 |
 | 快照 | `render_script` golden（既有，逐字未变）；`ci_gate_plan()` 序列快照；`render_template_script` 单 ABI golden（R4 新增） |
-| 门禁 | 五道门禁：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check` / `moon info` + `git diff --exit-code -- pkg.generated.mbti cmd/main/pkg.generated.mbti`（2026-11-09 实跑全绿，**79 tests**） |
+| 门禁 | 五道门禁：`moon check --deny-warn` / `moon build` / `moon test` / `moon fmt --check` / `moon info` + `git diff --exit-code -- ../pkg.generated.mbti ../cmd/main/pkg.generated.mbti`（2026-11-09 实跑全绿，**79 tests**） |
 | 设备（后续阶段） | 一次性脚本 → 目标设备启动；执行链环境与本机实测差距见 `EXECUTION-CHAIN.md` |
 
 > **门禁口径（2026-11-07 更新）**：早期实现未完成阶段因 65 条 `[0068] declaration_unimplemented` 曾临时豁免 `--deny-warn`、用普通 `moon check` 作最低门槛；实现完成后 `0068` 归零，**统一执行 `moon check --deny-warn`**，该豁免不再适用（`DECISIONS.md` 决策 5）。
@@ -145,8 +145,8 @@ R4 新增（加法性，签名冻结）：
 
 ## 13. 当前状态
 
-`moon_android.mbt` / `native_abi.mbt` / `template.mbt` / `jdk.mbt` 的 24 个值类型、`BuildPlanner` trait、`MoonAndroidError`（14 构造）与 14 个 API 均为**真实实现**，公开 API 带 `///` 文档注释；`pkg.generated.mbti` 快照与源码一致（R4 为纯加法）。**命令执行、签名、adb、APK 读写、Gradle/IDE 仍为非目标**（无脚本执行）。五道门禁全绿（79 tests，2026-11-09 本机等价实跑）。
+`../moon_android.mbt` / `../native_abi.mbt` / `../template.mbt` / `../jdk.mbt` 的 24 个值类型、`BuildPlanner` trait、`MoonAndroidError`（14 构造）与 14 个 API 均为**真实实现**，公开 API 带 `///` 文档注释；`../pkg.generated.mbti` 快照与源码一致（R4 为纯加法）。**命令执行、签名、adb、APK 读写、Gradle/IDE 仍为非目标**（无脚本执行）。五道门禁全绿（79 tests，2026-11-09 本机等价实跑）。
 
 ## 参考
 
-本仓库内文档：`README.md`（定位与排序修正）· `API.md`（公开接口）· `DECISIONS.md`（设计决策记录）· `TEMPLATE.md`（模板 → 生成目录树映射）· `EXECUTION-CHAIN.md`（执行链风险评估与 JDK 探测实测）。
+本仓库内文档：`../README.md`（定位与排序修正）· `API.md`（公开接口）· `DECISIONS.md`（设计决策记录）· `TEMPLATE.md`（模板 → 生成目录树映射）· `EXECUTION-CHAIN.md`（执行链风险评估与 JDK 探测实测）。
