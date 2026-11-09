@@ -22,6 +22,8 @@ pub fn plan_native_libs(Array[Abi], String) -> Array[NativeLib] raise MoonAndroi
 
 pub fn plan_template(TemplateParams) -> GeneratedTree raise MoonAndroidError
 
+pub fn probe_jdk(JdkProbeEnv) -> JdkProbeResult raise MoonAndroidError
+
 pub fn render_native_manifest(Array[NativeLib]) -> String raise MoonAndroidError
 
 pub fn render_script(BuildPlan) -> String raise MoonAndroidError
@@ -153,6 +155,46 @@ pub(all) struct GeneratedTree {
   native_libs : Array[NativeLib]
   assets : Array[AssetInjection]
   build_plan : BuildPlan
+}
+
+pub(all) struct JdkCandidate {
+  path : String
+  source : JdkSource
+  version : String?
+}
+
+pub(all) struct JdkEntry {
+  path : String
+  version : String?
+}
+
+pub(all) struct JdkProbeEnv {
+  java_home : JdkEntry?
+  registry_entries : Array[JdkEntry]
+  common_entries : Array[JdkEntry]
+  path_entries : Array[JdkEntry]
+  existing_jdk_dirs : Array[String]
+  required_major : Int32
+}
+
+pub(all) struct JdkProbeResult {
+  status : JdkProbeStatus
+  selected : JdkCandidate?
+  candidates : Array[JdkCandidate]
+  diagnostics : Array[String]
+}
+
+pub(all) enum JdkProbeStatus {
+  JdkFound
+  JdkNotFound
+  JdkVersionUnmatched
+}
+
+pub(all) enum JdkSource {
+  JavaHome
+  Registry
+  CommonPath
+  PathEntry
 }
 
 pub(all) struct LibHash {
