@@ -125,7 +125,7 @@ D8 8.6.2-dev (...)                                 # exit 0
 
 ## 6. 已知缺口与待主控裁决
 
-1. **G-1（R5）Assemble 条目路径**：修复会改变既有 `render_script` golden 文本，按红线 4「golden 不一致须书面记录待主控裁决，禁止静默重录」，本轮**只登记不改**。建议修复：把 `out/native/<abi>/<soname>` 改为 `out/native/<abi>/lib/<soname>` 的 staging 目录，再 `$JAR uf apk -C out/native/<abi> lib/<abi>/<soname>`（具体命令与 golden 需主控批准后重录）。
+1. **G-1（R5）Assemble 条目路径**：修复会改变既有 `render_script` golden 文本，按红线 4「golden 不一致须书面记录待主控裁决，禁止静默重录」，本轮**只登记不改**。建议修复：把 `out/native/<abi>/<soname>` 改为 `out/native/<abi>/lib/<soname>` 的 staging 目录，再 `$JAR uf apk -C out/native/<abi> lib/<abi>/<soname>`（具体命令与 golden 需主控批准后重录）。模板已生成 `jniLibs/<dir>` 与 `plan/abi-libs.txt` 作为正确目标布局，但既有 `Assemble` 命令**不消费** `jniLibs`；修复时二者应一并接线。
 2. **G-2（R6）CMake target 名**：模板采用「target = soname、OUTPUT_NAME = stem」以贴合计划；若实测 CMake 拒绝含 `.` 的 target 名，则需改计划命令（golden 变更，同样需裁决）。
 3. **G-3（§3.3）版本锁 vs 本机实际**：执行链要按锁定值跑通，必须安装 build-tools 34.0.0 / platform android-34 / NDK r27 / JDK 17 / CMake 3.22.1，或按升级流程改锁；本轮不改锁。
 4. **G-4（R12）sha256 自动化**：组合根自动计算 `.so` / APK / 资产哈希并调用 `attach_native_hashes`，属 P2。

@@ -66,6 +66,8 @@ build/android/
 
 **组合根必须提供的输入**（模板不生成、不读取）：`src/native/stub.c`（C stub 源码）、`src/java/*.java` 与 `gen/*.java`（壳 Activity / 生成代码）、签名密钥（只以 `$KEYSTORE_REF` 引用）。缺少这些输入时脚本语义仍然确定，但真实执行会失败——属执行链风险，见 `EXECUTION-CHAIN.md`。
 
+**`jniLibs/<dir>` 与 G-1 的关系**：该目录是修复「Assemble 把 `.so` 放在 APK 根」缺口（`EXECUTION-CHAIN.md` G-1）预留的 staging 目标；当前既有 `Assemble` 命令仍从 `out/native/<abi>` 打包、**不消费** `jniLibs`。二者需在 G-1 裁决时一并接线，本轮只登记不改既有 golden。
+
 ## 4. 脚本四阶段（`render_template_script`）
 
 ```sh
