@@ -261,3 +261,108 @@ test "probe_jdk 兼容旧版 1.8.0_202 → 主版本 8" {
   let result = @moon_android.probe_jdk(env)
   @test.assert_eq(status_label(result.status), "JdkFound")
 }
+
+///|
+test "W6：probe_jdk 10 位版本号 → 不可解析，不得回绕伪匹配 17" {
+  let env : @moon_android.JdkProbeEnv = {
+    ..empty_jdk_env(17),
+    java_home: Some({
+      path: "C:\\Java\\jdk-17",
+      version: Some("4294967313.0.1"), // 2^32+17，回绕后恰为 17
+    }),
+    existing_jdk_dirs: ["C:/Java/jdk-17"],
+  }
+  let result = @moon_android.probe_jdk(env)
+  @test.assert_eq(status_label(result.status), "JdkVersionUnmatched")
+  assert_true(result.selected is None)
+}
+
+///|
+/// 探测结果序列化键（状态 + 选中 + 候选数 + 诊断逐条），用于 strict/非 strict 逐字比较。
+fn probe_result_key(result : @moon_android.JdkProbeResult) -> String {
+  let mut key = status_label(result.status)
+  match result.selected {
+    Some(c) => key = key + "|sel:" + c.path
+    None => key = key + "|sel:none"
+  }
+  key = key + "|cand:\{result.candidates.length()}"
+  for d in result.diagnostics {
+    key = key + "|" + d
+  }
+  key
+}
+
+///|
+test "W7：strict 下 version=None → 不选中 + 诊断（fail-closed）" {
+  let env : @moon_android.JdkProbeEnv = {
+    ..empty_jdk_env(17),
+    java_home: Some({ path: "C:\\Java\\jdk-17", version: None, }),
+    existing_jdk_dirs: ["C:/Java/jdk-17"],
+  }
+  // 非 strict：fail-open 按存在性接受（旧行为不变）。
+  let loose = @moon_android.probe_jdk(env)
+  @test.assert_eq(status_label(loose.status), "JdkFound")
+  // strict：拒绝。
+  let strict = @moon_android.probe_jdk_strict(env)
+  @test.assert_eq(status_label(strict.status), "JdkVersionUnmatched")
+  assert_true(strict.selected is None)
+  let mut found = false
+  for message in strict.diagnostics {
+    if message.contains("版本未提供（严格模式拒绝）") {
+      found = true
+    }
+  }
+  assert_true(found)
+}
+
+///|
+test "W7：版本齐备语料 strict 与非 strict 结论逐字一致" {
+  let env : @moon_android.JdkProbeEnv = {
+    ..empty_jdk_env(17),
+    java_home: Some({
+      path: "C:\\Program Files\\Java\\jdk-17",
+      version: Some("17.0.9"),
+    }),
+    registry_entries: [
+      { path: "C:\\Program Files\\Java\\jdk-17", version: Some("17.0.9"), },
+      { path: "C:\\Program Files\\Java\\jdk-11", version: Some("11.0.20"), },
+    ],
+    path_entries: [{ path: "C:\\Java\\jdk-21", version: Some("21-ea"), }],
+    existing_jdk_dirs: [
+      "C:/Program Files/Java/jdk-17", "C:/Program Files/Java/jdk-11", "C:/Java/jdk-21",
+    ],
+  }
+  @test.assert_eq(
+    probe_result_key(@moon_android.probe_jdk(env)),
+    probe_result_key(@moon_android.probe_jdk_strict(env)),
+  )
+}
+
+///|
+test "W7：strict 跳过无版本候选、选中后续版本齐备候选" {
+  let env : @moon_android.JdkProbeEnv = {
+    ..empty_jdk_env(17),
+    java_home: Some({ path: "C:\\Java\\jdk-unknown", version: None, }),
+    registry_entries: [{ path: "C:\\Java\\jdk-17", version: Some("17.0.9"), }],
+    existing_jdk_dirs: ["C:/Java/jdk-unknown", "C:/Java/jdk-17"],
+  }
+  let strict = @moon_android.probe_jdk_strict(env)
+  @test.assert_eq(status_label(strict.status), "JdkFound")
+  match strict.selected {
+    Some(c) => @test.assert_eq(c.path, "C:/Java/jdk-17")
+    None => fail("expected second candidate selected")
+  }
+}
+
+///|
+test "W7：strict 复用 required_major 校验（8..99 之外 → InvalidJdkProbe）" {
+  for bad in [7, 100] {
+    match
+      @test.expect_error(() => {
+        @moon_android.probe_jdk_strict(empty_jdk_env(bad))
+      }) {
+      InvalidJdkProbe(_) => ()
+      _ => fail("expected InvalidJdkProbe for \{bad}")
+    }
+  }
+}

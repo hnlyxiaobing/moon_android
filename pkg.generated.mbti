@@ -30,6 +30,8 @@ pub fn plan_template(TemplateParams) -> GeneratedTree raise MoonAndroidError
 
 pub fn probe_jdk(JdkProbeEnv) -> JdkProbeResult raise MoonAndroidError
 
+pub fn probe_jdk_strict(JdkProbeEnv) -> JdkProbeResult raise MoonAndroidError
+
 pub fn render_native_manifest(Array[NativeLib]) -> String raise MoonAndroidError
 
 pub fn render_script(BuildPlan) -> String raise MoonAndroidError

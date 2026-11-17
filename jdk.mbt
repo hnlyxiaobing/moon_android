@@ -289,6 +289,29 @@ fn jdk_source_name(source : JdkSource) -> String {
 /// - 错误：`required_major` 不在 8..99 → `InvalidJdkProbe`。
 /// - 线程：纯函数，无状态，可并发调用。
 pub fn probe_jdk(env : JdkProbeEnv) -> JdkProbeResult raise MoonAndroidError {
+  probe_jdk_impl(env, false)
+}
+
+///|
+/// 严格模式 JDK 探测（纯评估，零 I/O；W7 新增，纯加法）。
+///
+/// 与 `probe_jdk` 唯一差异：候选 `version = None` 时**不选中**，记诊断
+/// 「版本未提供（严格模式拒绝）」（fail-closed：未提供版本 ≠ 匹配）；
+/// 其余优先级/去重/状态机/`required_major` 校验完全一致。
+/// 版本齐备语料下两者结论逐字相同。
+pub fn probe_jdk_strict(
+  env : JdkProbeEnv,
+) -> JdkProbeResult raise MoonAndroidError {
+  probe_jdk_impl(env, true)
+}
+
+///|
+/// 内部评估器：`strict` 仅影响 version=None 分支（W7 提取，
+/// 非 strict 路径输出与旧 `probe_jdk` 逐字节不变）。
+fn probe_jdk_impl(
+  env : JdkProbeEnv,
+  strict : Bool,
+) -> JdkProbeResult raise MoonAndroidError {
   if env.required_major < 8 || env.required_major > 99 {
     raise InvalidJdkProbe(
       "required_major 非法（需 8..99）：" + "\{env.required_major}",
@@ -394,15 +417,21 @@ pub fn probe_jdk(env : JdkProbeEnv) -> JdkProbeResult raise MoonAndroidError {
                   )
                 }
               }
-            None => {
-              diagnostics.push(
-                "版本未提供，按存在性接受：" + candidate.path,
-              )
-              if !has_selected {
-                selected = Some(candidate)
-                has_selected = true
+            None =>
+              if strict {
+                existed_but_mismatched = true
+                diagnostics.push(
+                  "版本未提供（严格模式拒绝）：" + candidate.path,
+                )
+              } else {
+                diagnostics.push(
+                  "版本未提供，按存在性接受：" + candidate.path,
+                )
+                if !has_selected {
+                  selected = Some(candidate)
+                  has_selected = true
+                }
               }
-            }
           }
         } else {
           diagnostics.push("目录不存在（跳过）：" + candidate.path)
