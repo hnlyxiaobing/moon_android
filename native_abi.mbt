@@ -148,6 +148,50 @@ pub fn plan_native_libs(
 }
 
 ///|
+/// 规划额外 native 库（W5 接线入口，纯加法）。
+///
+/// `BuildConfig.extra_native_libs` 由组合根经本函数消费；`plan_build`
+/// **不自动入包**（防火墙：旧渲染输出永不改变）。
+///
+/// - 映射：按序 zip，`sonames[i]` 为 `abis[i]` 的额外库；长度不一致 →
+///   `InvalidNativeLib`。
+/// - 错误：空/重复 ABI → `UnsupportedAbi`；库名非法 → `InvalidNativeLib`；
+///   soname 重复 → `InvalidNativeLib("重复的 extra soname：…")`。
+/// - 产出 `sha256 = None` 条目，与 `attach_native_hashes` /
+///   `validate_native_manifest` / `render_native_manifest` 天然互操作。
+pub fn plan_extra_native_libs(
+  sonames : Array[String],
+  abis : Array[Abi],
+) -> Array[NativeLib] raise MoonAndroidError {
+  validate_abis(abis)
+  if sonames.length() != abis.length() {
+    raise InvalidNativeLib(
+      "sonames 与 abis 长度不一致：\{sonames.length()} != \{abis.length()}",
+    )
+  }
+  for i in 0..<sonames.length() {
+    if !valid_soname(sonames[i]) {
+      raise InvalidNativeLib("soname 非法：" + sonames[i])
+    }
+    for j in 0..<i {
+      if sonames[j] == sonames[i] {
+        raise InvalidNativeLib("重复的 extra soname：" + sonames[i])
+      }
+    }
+  }
+  let libs : Array[NativeLib] = []
+  for i in 0..<abis.length() {
+    libs.push({
+      abi: abis[i],
+      dir: abi_dir_name(abis[i]),
+      soname: sonames[i],
+      sha256: None,
+    })
+  }
+  libs
+}
+
+///|
 /// 由 Android ABI 目录名反解 `Abi`（大小写敏感，与 Android 命名一致）。
 ///
 /// 非法名（含空串、大小写变体、尾随空格）→ `UnsupportedAbi(name)`。

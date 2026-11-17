@@ -282,3 +282,107 @@ test "render_native_manifest 确定性文本与未登记拒绝" {
   )
   @test.assert_eq(text, @moon_android.render_native_manifest(attached))
 }
+
+///|
+test "W5：plan_extra_native_libs 双 ABI 布局 + sha256=None + 顺序保留" {
+  let libs = @moon_android.plan_extra_native_libs(
+    ["libextra64.so", "libextra32.so"],
+    @moon_android.dual_abi_set(),
+  )
+  @test.assert_eq(libs.length(), 2)
+  @test.assert_eq(libs[0].dir, "arm64-v8a")
+  @test.assert_eq(libs[0].soname, "libextra64.so")
+  assert_true(libs[0].sha256 is None)
+  @test.assert_eq(libs[1].dir, "armeabi-v7a")
+  @test.assert_eq(libs[1].soname, "libextra32.so")
+  assert_true(libs[1].sha256 is None)
+}
+
+///|
+test "W5：plan_extra_native_libs 坏 soname/重复/长度不一致/空重复 ABI" {
+  let abis = @moon_android.dual_abi_set()
+  // 坏 soname → InvalidNativeLib。
+  for bad in ["extra.so", "lib.so", "lib../x.so", "liba b.so", ""] {
+    match
+      @test.expect_error(() => {
+        @moon_android.plan_extra_native_libs([bad, "libok.so"], abis)
+      }) {
+      InvalidNativeLib(_) => ()
+      _ => fail("expected InvalidNativeLib for " + bad)
+    }
+  }
+  // soname 重复 → InvalidNativeLib。
+  match
+    @test.expect_error(() => {
+      @moon_android.plan_extra_native_libs(["libdup.so", "libdup.so"], abis)
+    }) {
+    InvalidNativeLib(msg) =>
+      assert_true(msg.contains("重复的 extra soname"), msg~)
+    _ => fail("expected InvalidNativeLib(dup soname)")
+  }
+  // 长度不一致 → InvalidNativeLib。
+  match
+    @test.expect_error(() => {
+      @moon_android.plan_extra_native_libs(["libone.so"], abis)
+    }) {
+    InvalidNativeLib(msg) => assert_true(msg.contains("长度不一致"), msg~)
+    _ => fail("expected InvalidNativeLib(length mismatch)")
+  }
+  // 空 ABI → UnsupportedAbi(none)；重复 ABI → UnsupportedAbi(dir)。
+  match @test.expect_error(() => @moon_android.plan_extra_native_libs([], [])) {
+    UnsupportedAbi(name) => @test.assert_eq(name, "none")
+    _ => fail("expected UnsupportedAbi(none)")
+  }
+  match
+    @test.expect_error(() => {
+      @moon_android.plan_extra_native_libs(["liba.so", "libb.so"], [
+        @moon_android.Abi::Arm64V8a,
+        @moon_android.Abi::Arm64V8a,
+      ])
+    }) {
+    UnsupportedAbi(name) => @test.assert_eq(name, "arm64-v8a")
+    _ => fail("expected UnsupportedAbi(arm64-v8a)")
+  }
+}
+
+///|
+test "W5：plan_extra_native_libs 与 attach/validate/render 互操作全链" {
+  let abis = @moon_android.dual_abi_set()
+  let libs = @moon_android.plan_extra_native_libs(
+    ["libextra64.so", "libextra32.so"],
+    abis,
+  )
+  // 未登记哈希 → validate 拒绝（fail-closed）。
+  match
+    @test.expect_error(() => @moon_android.validate_native_manifest(libs, abis)) {
+    InvalidNativeLib(msg) => assert_true(msg.contains("未登记"), msg~)
+    _ => fail("expected InvalidNativeLib(unregistered)")
+  }
+  let attached = @moon_android.attach_native_hashes(libs, [
+    { abi: @moon_android.Abi::Arm64V8a, sha256: good_sha256(), },
+    { abi: @moon_android.Abi::ArmeabiV7a, sha256: second_sha256(), },
+  ])
+  @moon_android.validate_native_manifest(attached, abis)
+  let text = @moon_android.render_native_manifest(attached)
+  assert_true(
+    text.contains("lib/arm64-v8a/libextra64.so  sha256=" + good_sha256()),
+  )
+  assert_true(
+    text.contains("lib/armeabi-v7a/libextra32.so  sha256=" + second_sha256()),
+  )
+}
+
+///|
+test "W5：防火墙——plan_build 不消费 extra_native_libs（渲染逐字不变）" {
+  let base = demo_config()
+  let with_extra : @moon_android.BuildConfig = {
+    ..base,
+    extra_native_libs: ["libextra.so"],
+  }
+  let p1 = @moon_android.plan_build(base, [])
+  let p2 = @moon_android.plan_build(with_extra, [])
+  @test.assert_eq(
+    @moon_android.render_script(p1),
+    @moon_android.render_script(p2),
+  )
+}
