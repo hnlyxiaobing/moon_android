@@ -1,5 +1,6 @@
-// import {
-//   "hnlyxiaobing/moon_android" @lib,
-// }
+import {
+  "hnlyxiaobing/moon_android",
+  "moonbitlang/core/env",
+}
 
 pkgtype(kind: "executable")

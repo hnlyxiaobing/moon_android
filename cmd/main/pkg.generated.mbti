@@ -6,6 +6,7 @@ package "hnlyxiaobing/moon_android/cmd/main"
 // Errors
 
 // Types and methods
+type Flags
 
 // Type aliases
 
