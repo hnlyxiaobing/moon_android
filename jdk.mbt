@@ -12,7 +12,7 @@
 ///    输出 `JdkProbeResult`。
 ///
 /// 该设计让 JDK 探测可被单元测试（受控环境变量与目录快照），且不破坏
-/// 本库的确定性与 API 快照测试。风险结论登记于 `docs/EXECUTION-CHAIN.md`。
+/// 本库的确定性与 API 快照测试。风险结论登记于 `README.md` §6。
 
 ///|
 /// JDK 候选来源（优先级从高到低）。
@@ -194,6 +194,7 @@ fn normalize_jdk_dir(raw : String) -> JdkPath? {
 ///
 /// 支持 `17`、`17.0.9`、`21-ea`、`1.8.0_202`（→ 8）；首字符必须是数字，
 /// 否则 `None`（fail-closed：版本不可解析时不匹配）。
+/// W6：每段数字限 9 位，防 Int32 回绕伪匹配（10 位以上 → None）。
 fn jdk_major(version : String) -> Int32? {
   let chars = version.trim().to_array()
   let n = chars.length()
@@ -202,7 +203,13 @@ fn jdk_major(version : String) -> Int32? {
   }
   let mut i = 0
   let mut first = 0
+  let mut first_digits = 0
   while i < n && jdk_is_digit(chars[i]) {
+    first_digits = first_digits + 1
+    if first_digits > 9 {
+      // W6：位数上限，防累加回绕后伪匹配 required_major。
+      return None
+    }
     first = first * 10 + jdk_digit_value(chars[i])
     i = i + 1
   }
@@ -211,9 +218,13 @@ fn jdk_major(version : String) -> Int32? {
     let mut second = 0
     let mut digits = 0
     while j < n && jdk_is_digit(chars[j]) {
+      digits = digits + 1
+      if digits > 9 {
+        // W6：1.x 旧式第二段同样限 9 位。
+        return None
+      }
       second = second * 10 + jdk_digit_value(chars[j])
       j = j + 1
-      digits = digits + 1
     }
     if digits > 0 {
       return Some(second)
