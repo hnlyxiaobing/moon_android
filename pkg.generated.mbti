@@ -10,6 +10,10 @@ pub fn abi_dir_name(Abi) -> String
 
 pub fn attach_native_hashes(Array[NativeLib], Array[LibHash]) -> Array[NativeLib] raise MoonAndroidError
 
+pub fn check_entry_url(BuildConfig) -> EntryUrlReport
+
+pub fn check_sdk_range(BuildConfig) -> SdkRangeReport
+
 pub fn ci_gate_plan() -> Array[Gate]
 
 pub fn dual_abi_set() -> Array[Abi]
@@ -121,6 +125,13 @@ pub(all) enum BuildStep {
   AdbInstall
 }
 
+pub(all) struct EntryUrlReport {
+  required : Bool
+  present : Bool
+  scheme_ok : Bool
+  detail : String
+}
+
 #derive(@debug.Debug)
 pub(all) enum Gate {
   FmtCheck
@@ -211,6 +222,13 @@ pub(all) struct NativeLib {
 
 pub(all) struct PackageId {
   name : String
+}
+
+pub(all) struct SdkRangeReport {
+  min_sdk_valid : Bool
+  target_sdk_valid : Bool
+  order_valid : Bool
+  detail : String
 }
 
 pub(all) enum SigningScheme {
