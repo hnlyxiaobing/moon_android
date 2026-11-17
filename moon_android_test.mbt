@@ -3,7 +3,7 @@
 // Run `moon test` to execute and `moon test --update` to refresh snapshots.
 
 ///|
-/// 全部必锁版本齐备的工具链样例（版本锁策略与 pin 值见 docs/DECISIONS.md）。
+/// 全部必锁版本齐备的工具链样例（版本锁策略与 pin 值见 README.md §2）。
 fn locked_toolchain() -> @moon_android.ToolchainVersions {
   {
     moon_cli: "moon 0.1.20261104",
@@ -408,6 +408,7 @@ test "render_script golden：确定性脚本文本快照" {
     @moon_android.render_script(plan),
     content=(
       #|#!/bin/sh
+      #|set -eu
       #|# rendered by moon_android::render_script — deterministic review artifact; DO NOT EXECUTE
       #|# package_id: com.example.app
       #|# activity: WebView
@@ -474,7 +475,7 @@ test "render_script golden：确定性脚本文本快照" {
       #|# [8/10] Apksigner
       #|#   in: com.example.app-aligned.apk -> out: com.example.app.apk
       #|#   tools: apksigner@34.0.0
-      #|$APKSIGNER sign --ks "$KEYSTORE_REF" --v2-signing-enabled true --v3-signing-enabled true --out com.example.app.apk com.example.app-aligned.apk
+      #|$APKSIGNER sign --ks "$KEYSTORE_REF" --v2-signing-enabled true --v3-signing-enabled true --min-sdk-version 24 --max-sdk-version 34 --out com.example.app.apk com.example.app-aligned.apk
       #|
       #|# [9/10] Verify
       #|#   in: com.example.app.apk -> out: com.example.app.verify.txt
@@ -745,4 +746,60 @@ test "ci_gate_plan 七项门禁、含 CheckDenyWarn、顺序固定" {
     join_labels(labels),
     "FmtCheck, Check, CheckDenyWarn, TestCoverage, Bench, InfoSnapshot, VersionLock",
   )
+}
+
+///|
+test "W2：render_script 头部 set -eu（fail-closed 执行语义）" {
+  let plan = @moon_android.plan_build(demo_config(), [])
+  let text = @moon_android.render_script(plan)
+  assert_true(text.has_prefix("#!/bin/sh\nset -eu\n"))
+  // set -eu 必须先于一切命令行。
+  let pos_set = text.find("set -eu").unwrap()
+  let pos_first_cmd = text.find("$CMAKE").unwrap()
+  assert_true(pos_set < pos_first_cmd)
+}
+
+///|
+test "W3：apksigner 命令只使用官方 flag（无伪 --v31-signing-enabled）" {
+  let plan = @moon_android.plan_build(demo_config(), [])
+  let text = @moon_android.render_script(plan)
+  assert_true(!text.contains("--v31-signing-enabled"))
+  assert_true(text.contains("--min-sdk-version 24 --max-sdk-version 34"))
+  assert_true(text.contains("--v2-signing-enabled true"))
+  assert_true(text.contains("--v3-signing-enabled true"))
+}
+
+///|
+test "W3：V31 配置渲染为轮换语义注释 + v3 flag" {
+  let v31_config : @moon_android.BuildConfig = {
+    ..demo_config(),
+    min_sdk: 33,
+    signing_schemes: [
+      @moon_android.SigningScheme::V2,
+      @moon_android.SigningScheme::V3,
+      @moon_android.SigningScheme::V31,
+    ],
+  }
+  let text = @moon_android.render_script(
+    @moon_android.plan_build(v31_config, []),
+  )
+  assert_true(!text.contains("--v31-signing-enabled"))
+  assert_true(text.contains("# V31 rotation:"))
+  assert_true(text.contains("--rotation-min-sdk-version"))
+  assert_true(text.contains("--v3-signing-enabled true"))
+  assert_true(text.contains("--min-sdk-version 33 --max-sdk-version 34"))
+}
+
+///|
+test "W3：手工计划仅 V31 时仍伴生 v3 flag（渲染宽容度不丢签名面）" {
+  let v31_only : @moon_android.BuildConfig = {
+    ..demo_config(),
+    signing_schemes: [@moon_android.SigningScheme::V31],
+  }
+  let text = @moon_android.render_script(
+    raw_plan([@moon_android.BuildStep::Apksigner], v31_only),
+  )
+  assert_true(!text.contains("--v31-signing-enabled"))
+  assert_true(text.contains("--v3-signing-enabled true"))
+  assert_true(text.contains("# V31 rotation:"))
 }

@@ -738,18 +738,37 @@ fn command_lines(
     }
     Zipalign => "$ZIPALIGN -p -f 4 " + in_name + " " + out_name + "\n"
     Apksigner => {
+      // W3 保真修复（2026-11-16 裁决采纳 A 案）：官方 apksigner 无
+      // --v31-signing-enabled flag；V31 渲染为轮换语义注释 + v3 flag，
+      // 轮换参数（--rotation-min-sdk-version）留给组合根。同时显式传入
+      // --min-sdk-version / --max-sdk-version，使签名决策确定化。
       let mut flags = ""
+      let mut has_v3 = false
+      let mut has_v31 = false
       for scheme in config.signing_schemes {
         let name = signing_scheme_name(scheme)
-        let flag = if name == "V31" {
-          "--v31-signing-enabled"
+        if name == "V31" {
+          has_v31 = true
         } else {
-          "--v" + name[1:].to_owned() + "-signing-enabled"
+          if name == "V3" {
+            has_v3 = true
+          }
+          flags = flags + " --v" + name[1:].to_owned() + "-signing-enabled true"
         }
-        flags = flags + " " + flag + " true"
       }
+      if has_v31 && !has_v3 {
+        flags = flags + " --v3-signing-enabled true"
+      }
+      let mut out = ""
+      if has_v31 {
+        out = out +
+          "# V31 rotation: apksigner applies the v3.1 signing block when rotation is configured;\n" +
+          "# see --rotation-min-sdk-version (official apksigner has no v3.1-specific enable flag)\n"
+      }
+      out +
       "$APKSIGNER sign --ks \"$KEYSTORE_REF\"" +
       flags +
+      " --min-sdk-version \{config.min_sdk} --max-sdk-version \{config.target_sdk}" +
       " --out " +
       out_name +
       " " +
@@ -816,6 +835,14 @@ pub fn plan_build(
     extra_native_libs: config.extra_native_libs,
   }
   { steps, inputs, outputs, config: effective_config, }
+}
+
+///|
+/// 内部助手：脚本公共头（shebang + fail-closed 执行语义）。
+/// `set -eu`：任一命令失败即终止（含资产 sha256sum 校验失败后不再复制），
+/// 未定义变量即报错。W2 修复（2026-11-16 裁决采纳 A 案，golden 书面重录）。
+fn script_header() -> String {
+  "#!/bin/sh\nset -eu\n"
 }
 
 ///|
@@ -900,13 +927,14 @@ fn plan_steps_text(
 /// 把构建计划渲染为可审阅的脚本文本（仍不执行）。
 ///
 /// - 确定性：同输入两次渲染逐字相等；输出只由 `plan` 值决定。
+/// - 执行语义：头部 `set -eu` 保证任一命令失败即终止（fail-closed，W2）。
 /// - 错误：`InvalidStepOrder`（步骤序列违反规范全序）、`MissingTool`
 ///   （步骤所需工具在 `plan.config.toolchain` 中缺失）；
 ///   为防密钥泄漏，`keystore_ref` 内嵌密钥材料时额外以
 ///   `KeyMaterialEmbedded` 拒绝渲染（安全优先于渲染宽容度）。
 /// - 非目标：不 spawn 进程、不读写文件。
 pub fn render_script(plan : BuildPlan) -> String raise MoonAndroidError {
-  "#!/bin/sh\n" + plan_steps_text(plan, "render_script")
+  script_header() + plan_steps_text(plan, "render_script")
 }
 
 ///|

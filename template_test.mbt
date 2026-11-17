@@ -393,6 +393,7 @@ test "render_template_script golden：单 ABI 模板脚本快照" {
     @moon_android.render_template_script(@moon_android.plan_template(params)),
     content=(
       #|#!/bin/sh
+      #|set -eu
       #|# rendered by moon_android::render_template_script — deterministic review artifact; DO NOT EXECUTE
       #|# template root: build/android
       #|# package_id: com.example.app
@@ -530,7 +531,7 @@ test "render_template_script golden：单 ABI 模板脚本快照" {
       #|# [8/10] Apksigner
       #|#   in: com.example.app-aligned.apk -> out: com.example.app.apk
       #|#   tools: apksigner@34.0.0
-      #|$APKSIGNER sign --ks "$KEYSTORE_REF" --v2-signing-enabled true --v3-signing-enabled true --out com.example.app.apk com.example.app-aligned.apk
+      #|$APKSIGNER sign --ks "$KEYSTORE_REF" --v2-signing-enabled true --v3-signing-enabled true --min-sdk-version 24 --max-sdk-version 34 --out com.example.app.apk com.example.app-aligned.apk
       #|
       #|# [9/10] Verify
       #|#   in: com.example.app.apk -> out: com.example.app.verify.txt
@@ -673,4 +674,27 @@ test "render_template_script 篡改树：资产/密钥/工具错误路径" {
     MissingTool(tool) => @test.assert_eq(tool, "aapt2")
     _ => fail("expected MissingTool(aapt2)")
   }
+}
+
+///|
+test "W2：render_template_script 头部 set -eu 且先于一切命令" {
+  let text = @moon_android.render_template_script(
+    @moon_android.plan_template(demo_template()),
+  )
+  assert_true(text.has_prefix("#!/bin/sh\nset -eu\n"))
+  let pos_set = text.find("set -eu").unwrap()
+  let pos_first_cmd = text.find("mkdir -p").unwrap()
+  assert_true(pos_set < pos_first_cmd)
+}
+
+///|
+test "W2：资产阶段校验行先于复制行，set -eu 保证失败即终止" {
+  let text = @moon_android.render_template_script(
+    @moon_android.plan_template(demo_template()),
+  )
+  let pos_check = text.find("sha256sum -c -").unwrap()
+  let pos_copy = text.find("cp 'web/index.html'").unwrap()
+  assert_true(pos_check < pos_copy)
+  // fail-closed 语义由头部 set -eu 承载：校验失败 → 脚本终止 → 不再复制。
+  assert_true(text.has_prefix("#!/bin/sh\nset -eu\n"))
 }

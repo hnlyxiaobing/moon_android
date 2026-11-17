@@ -8,7 +8,7 @@
 /// 脚本文本。
 ///
 /// 边界：本文件仍然**不执行**任何命令、不读写文件、不下载工具；脚本由
-/// 组合根执行或审阅。模板 → 生成目录树的映射见 `docs/TEMPLATE.md`。
+/// 组合根执行或审阅。模板 → 生成目录树的映射见 `README.md` §1/§3。
 
 ///|
 /// 资产注入声明。资产内容**不入库**：只登记源路径、APK 内目标路径与
@@ -61,7 +61,7 @@ pub(all) struct GeneratedFile {
 /// 模板生成计划（纯值，不含可执行动作）。
 ///
 /// - `root`：生成根（固定 `build/android`，相对本仓库根目录）；
-/// - `files`：生成的声明式文件（顺序固定，见 `docs/TEMPLATE.md`）；
+/// - `files`：生成的声明式文件（顺序固定，见 `README.md` §1）；
 /// - `native_libs`：双 ABI `.so` 布局（`sha256 = None`，构建后由
 ///   `attach_native_hashes` 回填）；
 /// - `assets`：资产注入声明（渲染脚本时重新校验）；
@@ -168,8 +168,8 @@ fn relative_path_ok(path : String) -> Bool {
 }
 
 ///|
-/// 内部助手：模块依赖文本合法性（如 `hnlyxiaobing/moon_abi`、
-/// `bobzhang/zip@0.1.2`）。允许 `[A-Za-z0-9_.@-]` 与 `/`；段不得为空 /
+/// 内部助手：模块依赖文本合法性（如 `author/name`、
+/// `author/name@0.1.2`）。允许 `[A-Za-z0-9_.@-]` 与 `/`；段不得为空 /
 /// `.` / `..`。
 fn valid_module_dep(dep : String) -> Bool {
   if dep.is_empty() {
@@ -517,7 +517,8 @@ pub fn plan_template(
 ///|
 /// 把模板计划渲染为「按计划执行」的确定性脚本文本（仍**不执行**）。
 ///
-/// 四个阶段（顺序固定）：
+/// 四个阶段（顺序固定）；头部 `set -eu` 保证任一命令失败即终止
+/// （fail-closed，W2：资产哈希校验失败后不再复制）：
 /// 1. 物化生成目录树（每个 `GeneratedFile` 一个 heredoc，分隔符按序号唯一，
 ///    内容若含同名整行则拒绝渲染 → `InvalidTemplate`）；
 /// 2. ABI 布局（`jniLibs/<dir>` 目录 + 期望 APK 条目注释，双 ABI 基线）；
@@ -567,7 +568,7 @@ pub fn render_template_script(
   for abi in config.abis {
     abi_names.push(abi_name(abi))
   }
-  let mut text = "#!/bin/sh\n"
+  let mut text = script_header()
   text = text +
     "# rendered by moon_android::render_template_script — deterministic review artifact; DO NOT EXECUTE\n"
   text = text + "# template root: " + tree.root + "\n"
